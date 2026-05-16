@@ -1,0 +1,16 @@
+[package]
+name = "iron_canvas"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+crossterm = "0.29"
+
+[[bin]]
+name = "rectangle_rotation"
+path = "src/rectangle.rs"

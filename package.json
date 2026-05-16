@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "prepare": "husky",
+    "check": "cargo fmt --check && npm test",
+    "test": "powershell -ExecutionPolicy Bypass -File ./scripts/test.ps1",
+    "test:rust": "cargo test",
+    "test:web": "powershell -ExecutionPolicy Bypass -File ./scripts/test-web.ps1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

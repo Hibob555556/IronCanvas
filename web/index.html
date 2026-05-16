@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iron Canvas Rectangle</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="toolbar">
+        <h1>Iron Canvas</h1>
+      </header>
+
+      <section class="stage" aria-label="Rectangle preview">
+        <div class="program-output">
+          <div class="controls" aria-label="Rectangle controls">
+            <label class="angle-control" for="angle-select">
+              <span>Angle</span>
+              <select id="angle-select">
+                <option value="45">45 degrees</option>
+                <option value="90" selected>90 degrees</option>
+              </select>
+            </label>
+            <button id="rotate-button" type="button">Rotate</button>
+            <button id="reset-button" type="button">Reset</button>
+          </div>
+
+          <div class="display">
+            <canvas id="canvas" width="720" height="480"></canvas>
+          </div>
+
+          <div class="output">
+            <div class="output-header">
+              <h2>Vertices</h2>
+              <span id="rotation-label">0 degrees</span>
+            </div>
+            <pre id="vertices-output">Loading WASM...</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
