@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hibob555556.github.io/IronCanvas/sitemap.xml

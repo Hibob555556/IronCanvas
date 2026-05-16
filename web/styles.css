@@ -23,6 +23,7 @@
 
 html {
   min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -38,15 +39,22 @@ body {
   overflow-x: hidden;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 button,
-select {
+select,
+.button {
   min-height: 44px;
   border-radius: 999px;
   font: inherit;
   font-weight: 800;
 }
 
-button {
+button,
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -59,9 +67,17 @@ button {
   transition: transform 180ms ease, border-color 180ms ease, filter 180ms ease;
 }
 
-button:hover {
+button:hover,
+.button:hover {
   filter: brightness(1.06);
   transform: translateY(-2px);
+}
+
+.button-secondary {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  box-shadow: none;
 }
 
 select {
@@ -77,9 +93,97 @@ select option {
 }
 
 button:focus-visible,
-select:focus-visible {
+select:focus-visible,
+.button:focus-visible {
   outline: 3px solid rgba(255, 210, 121, 0.7);
   outline-offset: 3px;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(980px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 14px 24px;
+  border-bottom: 1px solid transparent;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0.94), rgba(7, 17, 31, 0.66));
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 220px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(124, 240, 207, 0.4);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(124, 240, 207, 0.18), rgba(255, 210, 121, 0.14));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-weight: 700;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-copy strong {
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-size: 0.98rem;
+  letter-spacing: 0;
+}
+
+.brand-copy span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: flex-end;
+}
+
+.site-nav a {
+  position: relative;
+  color: #dfe8fb;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease;
+}
+
+.site-nav a:hover::after,
+.site-nav a:focus-visible::after {
+  transform: scaleX(1);
 }
 
 .app {
@@ -93,6 +197,7 @@ select:focus-visible {
 
 .toolbar,
 .stage,
+.portfolio-section,
 .output {
   position: relative;
   overflow: hidden;
@@ -103,6 +208,7 @@ select:focus-visible {
 
 .toolbar::before,
 .stage::before,
+.portfolio-section::before,
 .output::before {
   content: "";
   position: absolute;
@@ -121,6 +227,16 @@ select:focus-visible {
   border-radius: var(--radius-lg);
 }
 
+.eyebrow {
+  position: relative;
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .toolbar h1 {
   position: relative;
   margin: 0;
@@ -131,14 +247,21 @@ select:focus-visible {
 }
 
 .toolbar h1::before {
-  content: "WASM canvas";
-  display: block;
-  margin-bottom: 8px;
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  content: none;
+}
+
+.intro,
+.section-heading p,
+.info-card p,
+.flow-list li {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.intro {
+  position: relative;
+  max-width: 720px;
+  margin: 10px 0 0;
 }
 
 .controls {
@@ -246,6 +369,168 @@ pre {
   white-space: pre;
 }
 
+.portfolio-section {
+  padding: 22px;
+  border-radius: var(--radius-lg);
+}
+
+.section-heading {
+  position: relative;
+  max-width: 720px;
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  margin: 0 0 10px;
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-size: clamp(1.55rem, 4vw, 2.25rem);
+  line-height: 1.05;
+}
+
+.section-heading p:last-child {
+  margin-bottom: 0;
+}
+
+.card-grid {
+  position: relative;
+  display: grid;
+  gap: 14px;
+}
+
+.info-card {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at top right, rgba(124, 240, 207, 0.08), transparent 36%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.card-kicker {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--accent-warm);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.info-card h3 {
+  margin: 0 0 10px;
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-size: 1.15rem;
+}
+
+.info-card p {
+  margin: 0;
+}
+
+.split-section {
+  display: grid;
+  gap: 18px;
+}
+
+.flow-list {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: flow-step;
+}
+
+.flow-list li {
+  counter-increment: flow-step;
+  position: relative;
+  padding: 16px 16px 16px 58px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.flow-list li::before {
+  content: counter(flow-step);
+  position: absolute;
+  left: 16px;
+  top: 17px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #041117;
+  font-weight: 900;
+}
+
+.flow-list strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.page-footer {
+  width: min(980px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 0 0 28px;
+}
+
+.site-footer {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(14, 24, 42, 0.92), rgba(9, 16, 30, 0.82));
+  box-shadow: var(--shadow);
+}
+
+.site-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 38%, rgba(124, 240, 207, 0.06));
+  pointer-events: none;
+}
+
+.footer-copy,
+.footer-actions,
+.footer-note {
+  position: relative;
+}
+
+.footer-copy {
+  max-width: 760px;
+  margin-bottom: 18px;
+}
+
+.footer-copy h2 {
+  margin: 0 0 10px;
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-size: clamp(1.55rem, 4vw, 2.25rem);
+  line-height: 1.06;
+}
+
+.footer-copy p,
+.footer-note {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer-note {
+  margin: 22px 0 0;
+  color: #7f92b1;
+  font-size: 0.92rem;
+}
+
 @media (min-width: 960px) {
   .program-output {
     grid-template-columns: minmax(0, 1.08fr) minmax(330px, 0.92fr);
@@ -275,9 +560,32 @@ pre {
     max-height: none;
     min-height: 0;
   }
+
+  .card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .split-section {
+    grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
+    align-items: start;
+  }
 }
 
 @media (max-width: 720px) {
+  .site-header {
+    position: static;
+    width: min(100vw - 1rem, 100%);
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px 16px;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .site-nav {
+    justify-content: flex-start;
+    gap: 12px 16px;
+  }
+
   .app {
     width: min(100vw - 1rem, 100%);
     padding: 10px 0;
@@ -313,8 +621,19 @@ pre {
   }
 
   .stage,
-  .output {
+  .output,
+  .portfolio-section {
     padding: 12px;
+    border-radius: 20px;
+  }
+
+  .page-footer {
+    width: min(100vw - 1rem, 100%);
+    padding-bottom: 18px;
+  }
+
+  .site-footer {
+    padding: 16px;
     border-radius: 20px;
   }
 }

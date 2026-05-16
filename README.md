@@ -1,8 +1,13 @@
 # Iron Canvas
 
+[![CI](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml)
+[![Deploy Web Demo](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml)
+
 Iron Canvas is a small Rust-to-WebAssembly geometry demo that renders and rotates a rectangle in the browser. The project is intentionally compact, but it is built like a real frontend systems project: Rust owns the geometry, WebAssembly exposes a narrow runtime API, and JavaScript handles only browser rendering and UI orchestration.
 
 The result is a visual playground for understanding how typed Rust data can move through WASM memory and become an interactive canvas experience.
+
+Repository: [github.com/Hibob555556/IronCanvas](https://github.com/Hibob555556/IronCanvas)
 
 ## Highlights
 

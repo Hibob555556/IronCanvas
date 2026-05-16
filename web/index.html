@@ -3,13 +3,122 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Iron Canvas Rectangle</title>
+    <title>Iron Canvas | Rust WebAssembly Geometry Demo</title>
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="Cayden Lunt" />
+    <meta
+      name="description"
+      content="Iron Canvas is a Rust and WebAssembly portfolio project that renders rectangle vertices in the browser, rotates them with Rust-owned geometry logic, and visualizes the result on canvas."
+    />
+    <meta
+      name="keywords"
+      content="Iron Canvas, Rust WebAssembly, WASM geometry demo, Rust canvas demo, WebAssembly portfolio project, Cayden Lunt, rectangle rotation, Rust frontend project"
+    />
+    <meta name="theme-color" content="#07111f" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Iron Canvas | Rust WebAssembly Geometry Demo"
+    />
+    <meta
+      property="og:description"
+      content="A portfolio-ready Rust and WebAssembly geometry demo where Rust owns rectangle rotation logic and the browser renders the live vertex buffer on canvas."
+    />
+    <meta
+      property="og:url"
+      content="https://hibob555556.github.io/IronCanvas/"
+    />
+    <meta property="og:site_name" content="Iron Canvas" />
+    <meta
+      property="og:image"
+      content="https://hibob555556.github.io/IronCanvas/og-card.svg"
+    />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Iron Canvas Rust and WebAssembly geometry demo preview"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Iron Canvas | Rust WebAssembly Geometry Demo"
+    />
+    <meta
+      name="twitter:description"
+      content="A Rust-owned geometry engine compiled to WebAssembly and rendered as an interactive canvas portfolio project."
+    />
+    <meta
+      name="twitter:image"
+      content="https://hibob555556.github.io/IronCanvas/og-card.svg"
+    />
+    <link rel="canonical" href="https://hibob555556.github.io/IronCanvas/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "Iron Canvas",
+        "description": "A Rust and WebAssembly geometry demo that renders and rotates rectangle vertices in the browser.",
+        "url": "https://hibob555556.github.io/IronCanvas/",
+        "codeRepository": "https://github.com/Hibob555556/IronCanvas",
+        "programmingLanguage": ["Rust", "JavaScript", "WebAssembly"],
+        "runtimePlatform": "Web browser",
+        "author": {
+          "@type": "Person",
+          "name": "Cayden Lunt",
+          "url": "https://www.caydenlunt.com"
+        },
+        "applicationCategory": "DeveloperApplication",
+        "keywords": [
+          "Rust",
+          "WebAssembly",
+          "Canvas",
+          "Geometry",
+          "Portfolio project"
+        ]
+      }
+    </script>
   </head>
   <body>
-    <main class="app">
-      <header class="toolbar">
-        <h1>Iron Canvas</h1>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Back to top">
+        <span class="brand-mark">IC</span>
+        <span class="brand-copy">
+          <strong>Iron Canvas</strong>
+          <span>Hibob555556/IronCanvas</span>
+        </span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a href="https://www.caydenlunt.com">Home</a>
+        <a href="#demo">Demo</a>
+        <a href="#logic">Logic</a>
+        <a href="#implementation">Flow</a>
+        <a href="#quality">Quality</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </header>
+
+    <main id="top" class="app">
+      <header class="toolbar" id="demo">
+        <div>
+          <p class="eyebrow">Rust + WebAssembly geometry</p>
+          <h1>Iron Canvas</h1>
+          <p class="intro">
+            A browser-based rectangle transform demo where Rust owns the
+            geometry, WebAssembly exposes the runtime API, and JavaScript only
+            handles canvas rendering.
+          </p>
+        </div>
       </header>
 
       <section class="stage" aria-label="Rectangle preview">
@@ -39,7 +148,145 @@
           </div>
         </div>
       </section>
+
+      <section class="portfolio-section" id="logic">
+        <div class="section-heading">
+          <p class="eyebrow">Project logic</p>
+          <h2>One source of truth, rendered through WASM</h2>
+          <p>
+            The rectangle starts as a single Rust vertex array. The browser reads
+            those vertices from WebAssembly memory, draws them to canvas, and
+            requests transforms through exported Rust functions.
+          </p>
+        </div>
+
+        <div class="card-grid">
+          <article class="info-card">
+            <span class="card-kicker">Geometry</span>
+            <h3>Rust owns the math</h3>
+            <p>
+              Rotation happens in `rotate_z`, using the rectangle center as the
+              pivot. Positive degrees rotate clockwise so the browser controls
+              match what the user sees.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <span class="card-kicker">Boundary</span>
+            <h3>WASM exposes a small API</h3>
+            <p>
+              JavaScript calls exported functions for reset, rotation, vertex
+              count, and memory pointers. It never duplicates the transform
+              formulas.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <span class="card-kicker">Rendering</span>
+            <h3>Canvas is a view layer</h3>
+            <p>
+              The canvas maps world coordinates to pixels, marks the original
+              top edge, and prints the current vertex buffer for inspection.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="portfolio-section split-section" id="implementation">
+        <div class="section-heading">
+          <p class="eyebrow">Implementation</p>
+          <h2>How a click becomes a transform</h2>
+          <p>
+            The interaction is intentionally simple, which makes the data flow
+            easy to inspect from UI event to Rust memory mutation.
+          </p>
+        </div>
+
+        <ol class="flow-list">
+          <li>
+            <strong>Select an angle.</strong>
+            The UI passes either `45` or `90` into the WASM export.
+          </li>
+          <li>
+            <strong>Rotate in Rust.</strong>
+            Rust iterates over the current vertex buffer and calls `rotate_z`
+            for each `[x, y, z]` position.
+          </li>
+          <li>
+            <strong>Read the updated buffer.</strong>
+            JavaScript reads the same WASM memory as a `Float32Array`.
+          </li>
+          <li>
+            <strong>Redraw the canvas.</strong>
+            The browser projects the updated coordinates to pixels and refreshes
+            the output panel.
+          </li>
+        </ol>
+      </section>
+
+      <section class="portfolio-section" id="quality">
+        <div class="section-heading">
+          <p class="eyebrow">Quality</p>
+          <h2>Tested like a tiny production app</h2>
+        </div>
+
+        <div class="card-grid quality-grid">
+          <article class="info-card">
+            <h3>Rust tests</h3>
+            <p>
+              Unit and integration tests verify bounds, closed geometry,
+              clockwise rotation, center stability, and repeated rotations.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <h3>Web/WASM tests</h3>
+            <p>
+              Node tests instantiate the compiled WASM module, validate exports,
+              rotate the runtime buffer, and confirm negative zero is hidden.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <h3>CI/CD</h3>
+            <p>
+              GitHub Actions run formatting and the full test suite, then build
+              the static `web/` artifact for GitHub Pages deployment.
+            </p>
+          </article>
+        </div>
+      </section>
     </main>
+
+    <footer id="contact" class="page-footer">
+      <section class="site-footer">
+        <p class="eyebrow">Project links</p>
+        <div class="footer-copy">
+          <h2>Built as a portfolio-ready WebAssembly case study.</h2>
+          <p>
+            Iron Canvas demonstrates Rust-owned geometry, browser rendering,
+            WASM memory interop, automated tests, and GitHub Pages deployment in
+            one compact project.
+          </p>
+        </div>
+
+        <div class="footer-actions">
+          <a class="button button-primary" href="#demo">Try the demo</a>
+          <a
+            class="button button-secondary"
+            href="https://github.com/Hibob555556/IronCanvas"
+            target="_blank"
+            rel="noopener"
+          >
+            View GitHub
+          </a>
+        </div>
+
+        <p class="footer-note">
+          Rust geometry engine | WebAssembly runtime | Canvas view layer
+        </p>
+      </section>
+    </footer>
 
     <script type="module" src="./main.js"></script>
   </body>
