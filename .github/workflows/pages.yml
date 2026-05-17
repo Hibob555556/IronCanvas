@@ -36,10 +36,15 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add wasm32-unknown-unknown
+          rustup component add llvm-tools-preview
 
-      - name: Test and build
+      - name: Install coverage tool
         shell: pwsh
-        run: .\scripts\test.ps1
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Check, test, and build
+        shell: pwsh
+        run: npm run check
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

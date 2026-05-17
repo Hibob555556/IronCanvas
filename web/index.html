@@ -129,7 +129,7 @@
             <label class="angle-control" for="version-select">
               <span>Version</span>
               <select id="version-select">
-                <option value="0.3.0" selected>v0.3.0 Shaded cube</option>
+                <option value="0.3.2" selected>v0.3.2 Shaded cube</option>
                 <option value="0.2.0">v0.2.0 Wire cube</option>
                 <option value="0.1.0">v0.1.0 Rectangle</option>
               </select>
@@ -144,8 +144,7 @@
             <label class="angle-control" for="axis-select">
               <span>Axis</span>
               <select id="axis-select">
-                <option value="xyz" selected>Whole cube</option>
-                <option value="y">Y axis</option>
+                <option value="y" selected>Y axis</option>
                 <option value="x">X axis</option>
                 <option value="z">Z axis</option>
               </select>
@@ -171,20 +170,38 @@
       <section class="portfolio-section version-section" id="versions">
         <div class="section-heading">
           <p class="eyebrow">Version history</p>
-          <h2 id="version-title">v0.3.0 Shaded cube</h2>
+          <h2 id="version-title">v0.3.2 Shaded cube</h2>
           <p id="version-summary">
-            Filled cube faces, visible axis guides, and whole-cube rotation make
-            the 3D motion easier to read.
+            Filled cube faces and visible axis guides make the X, Y, and Z
+            rotations easier to read.
           </p>
         </div>
 
         <div class="changelog" aria-label="Changelog">
-          <article class="changelog-entry is-active" data-version="0.3.0">
-            <span class="card-kicker">v0.3.0</span>
+          <article class="changelog-entry is-active" data-version="0.3.2">
+            <span class="card-kicker">v0.3.2</span>
             <h3>Shaded cube</h3>
             <p>
+              Improves 45-degree readability with a steadier canvas camera and
+              camera-depth face ordering.
+            </p>
+          </article>
+
+          <article class="changelog-entry" data-version="0.3.1">
+            <span class="card-kicker">v0.3.1</span>
+            <h3>Axis-only rotation</h3>
+            <p>
+              Removes the whole-cube shortcut, keeps explicit X, Y, and Z
+              rotation controls, and stabilizes rotation framing.
+            </p>
+          </article>
+
+          <article class="changelog-entry" data-version="0.3.0">
+            <span class="card-kicker">v0.3.0</span>
+            <h3>Shaded cube foundation</h3>
+            <p>
               Adds Rust-owned face vertices, colored face rendering, axis
-              guides, and whole-cube rotation.
+              guides, and X, Y, and Z rotation controls.
             </p>
           </article>
 
@@ -225,8 +242,8 @@
             <span class="card-kicker">Geometry</span>
             <h3>Rust owns the math</h3>
             <p>
-              Rotation happens in Rust through X, Y, Z, and whole-cube
-              transforms using the cube center as the pivot.
+              Rotation happens in Rust through X, Y, and Z axis transforms
+              using the cube center as the pivot.
             </p>
           </article>
 
@@ -271,7 +288,7 @@
           <li>
             <strong>Rotate in Rust.</strong>
             Rust iterates over the current edge and face buffers, then applies
-            the selected X, Y, Z, or whole-cube transform.
+            the selected X, Y, or Z axis transform.
           </li>
           <li>
             <strong>Read the updated buffer.</strong>

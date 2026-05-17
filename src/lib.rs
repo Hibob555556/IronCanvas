@@ -258,13 +258,6 @@ pub extern "C" fn rotate_current_cube_y(degrees: f32) {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn rotate_current_cube_xyz(degrees: f32) {
-    rotate_current_cube_x(degrees);
-    rotate_current_cube_y(degrees);
-    rotate_current_rectangle_z(degrees);
-}
-
-#[unsafe(no_mangle)]
 pub extern "C" fn rotate_rectangle_90_clockwise(vertices_ptr: *mut Vertex, vertex_count: usize) {
     rotate_rectangle_z(vertices_ptr, vertex_count, 90.0);
 }
@@ -361,6 +354,9 @@ fn clamp_zero(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static CURRENT_BUFFER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     fn assert_close(actual: f32, expected: f32) {
         assert!(
@@ -388,10 +384,123 @@ mod tests {
     }
 
     #[test]
+    fn rotate_x_uses_cube_center_as_pivot() {
+        let rotated = rotate_x([0.0, 0.0, 0.0], CENTER, 90.0);
+
+        assert_close(rotated[0], 0.0);
+        assert_close(rotated[1], 0.0);
+        assert_close(rotated[2], 2.0);
+    }
+
+    #[test]
+    fn rotate_y_uses_cube_center_as_pivot() {
+        let rotated = rotate_y([0.0, 0.0, 0.0], CENTER, 90.0);
+
+        assert_close(rotated[0], 2.0);
+        assert_close(rotated[1], 0.0);
+        assert_close(rotated[2], 0.0);
+    }
+
+    #[test]
     fn clamp_zero_removes_negative_zero_and_float_dust() {
         let value = clamp_zero(-0.000_000_1);
 
         assert_eq!(value, 0.0);
         assert!(!value.is_sign_negative());
+    }
+
+    #[test]
+    fn exported_counts_and_pointers_match_runtime_buffers() {
+        let _guard = CURRENT_BUFFER_TEST_LOCK.lock().unwrap();
+
+        reset_current_rectangle();
+
+        assert_eq!(rectangle_vertex_count(), VERTEX_COUNT);
+        assert_eq!(cube_face_vertex_count(), FACE_VERTEX_COUNT);
+        assert!(!rectangle_vertices_ptr().is_null());
+        assert!(!current_rectangle_vertices_ptr().is_null());
+        assert!(!current_cube_face_vertices_ptr().is_null());
+    }
+
+    #[test]
+    fn exported_reset_restores_current_edge_buffer() {
+        let _guard = CURRENT_BUFFER_TEST_LOCK.lock().unwrap();
+
+        reset_current_rectangle();
+        rotate_current_rectangle_z(90.0);
+        reset_current_rectangle();
+
+        let vertices = unsafe {
+            std::slice::from_raw_parts(
+                current_rectangle_vertices_ptr() as *const Vertex,
+                rectangle_vertex_count(),
+            )
+        };
+
+        assert_eq!(vertices[0].position, VERTICES[0].position);
+        assert_eq!(
+            vertices[VERTEX_COUNT - 1].position,
+            VERTICES[VERTEX_COUNT - 1].position
+        );
+    }
+
+    #[test]
+    fn exported_current_rotations_mutate_edges_and_faces() {
+        let _guard = CURRENT_BUFFER_TEST_LOCK.lock().unwrap();
+
+        reset_current_rectangle();
+        rotate_current_cube_x(90.0);
+
+        let vertices = unsafe {
+            std::slice::from_raw_parts(
+                current_rectangle_vertices_ptr() as *const Vertex,
+                rectangle_vertex_count(),
+            )
+        };
+        let faces = unsafe {
+            std::slice::from_raw_parts(
+                current_cube_face_vertices_ptr() as *const Vertex,
+                cube_face_vertex_count(),
+            )
+        };
+
+        assert_vertex_close(vertices[0], [0.0, 0.0, 2.0]);
+        assert_vertex_close(faces[0], [0.0, 0.0, 2.0]);
+
+        reset_current_rectangle();
+        rotate_current_cube_y(90.0);
+        let vertices = unsafe {
+            std::slice::from_raw_parts(
+                current_rectangle_vertices_ptr() as *const Vertex,
+                rectangle_vertex_count(),
+            )
+        };
+
+        assert_vertex_close(vertices[0], [2.0, 0.0, 0.0]);
+
+        reset_current_rectangle();
+        rotate_current_rectangle_90_clockwise();
+        let vertices = unsafe {
+            std::slice::from_raw_parts(
+                current_rectangle_vertices_ptr() as *const Vertex,
+                rectangle_vertex_count(),
+            )
+        };
+
+        assert_vertex_close(vertices[0], [0.0, 2.0, 0.0]);
+    }
+
+    #[test]
+    fn raw_rotation_exports_ignore_null_pointers() {
+        rotate_rectangle_90_clockwise(core::ptr::null_mut(), VERTEX_COUNT);
+        rotate_rectangle_x(core::ptr::null_mut(), VERTEX_COUNT, 90.0);
+        rotate_rectangle_y(core::ptr::null_mut(), VERTEX_COUNT, 90.0);
+        rotate_rectangle_z(core::ptr::null_mut(), VERTEX_COUNT, 90.0);
+    }
+
+    fn assert_vertex_close(actual: Vertex, expected: [f32; 3]) {
+        assert_close(actual.position[0], expected[0]);
+        assert_close(actual.position[1], expected[1]);
+        assert_close(actual.position[2], expected[2]);
     }
 }

@@ -1,6 +1,6 @@
 use iron_canvas::{
-    CENTER, Vertex, cube_face_vertex_count, rectangle_vertices, rotate_rectangle_y,
-    rotate_rectangle_z, rotate_y, rotate_z,
+    CENTER, Vertex, cube_face_vertex_count, rectangle_vertices, rotate_rectangle_x,
+    rotate_rectangle_y, rotate_rectangle_z, rotate_x, rotate_y, rotate_z,
 };
 
 fn assert_close(actual: f32, expected: f32) {
@@ -52,11 +52,21 @@ fn rotate_z_mutates_cube_edge_vertices_at_runtime() {
     rotate_rectangle_z(vertices.as_mut_ptr(), vertices.len(), 90.0);
 
     assert_vertex_close(vertices[0], [0.0, 2.0, 0.0]);
-    assert_vertex_close(vertices[5], [2.0, 0.0, 0.0]);
+    assert_vertex_close(vertices[5], [0.0, 0.0, 0.0]);
 }
 
 #[test]
-fn rotate_y_mutates_depth_for_whole_cube_turns() {
+fn rotate_x_mutates_height_and_depth_for_cube_turns() {
+    let mut vertices = rectangle_vertices().to_vec();
+
+    rotate_rectangle_x(vertices.as_mut_ptr(), vertices.len(), 90.0);
+
+    assert_vertex_close(vertices[0], [0.0, 0.0, 2.0]);
+    assert_vertex_close(vertices[5], [2.0, 0.0, 2.0]);
+}
+
+#[test]
+fn rotate_y_mutates_width_and_depth_for_cube_turns() {
     let mut vertices = rectangle_vertices().to_vec();
 
     rotate_rectangle_y(vertices.as_mut_ptr(), vertices.len(), 90.0);
@@ -84,6 +94,16 @@ fn rotate_z_preserves_distance_from_center() {
     let rotated = rotate_z(position, CENTER, 45.0);
     let original_distance = (position[0] - CENTER[0]).hypot(position[1] - CENTER[1]);
     let rotated_distance = (rotated[0] - CENTER[0]).hypot(rotated[1] - CENTER[1]);
+
+    assert_close(rotated_distance, original_distance);
+}
+
+#[test]
+fn rotate_x_preserves_distance_from_center() {
+    let position = [2.0, 2.0, 0.0];
+    let rotated = rotate_x(position, CENTER, 45.0);
+    let original_distance = (position[1] - CENTER[1]).hypot(position[2] - CENTER[2]);
+    let rotated_distance = (rotated[1] - CENTER[1]).hypot(rotated[2] - CENTER[2]);
 
     assert_close(rotated_distance, original_distance);
 }

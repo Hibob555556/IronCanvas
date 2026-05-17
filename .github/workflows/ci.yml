@@ -28,14 +28,15 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add wasm32-unknown-unknown
+          rustup component add llvm-tools-preview
 
-      - name: Check Rust formatting
+      - name: Install coverage tool
         shell: pwsh
-        run: cargo fmt --check
+        run: cargo install cargo-llvm-cov --locked
 
-      - name: Run full test suite
+      - name: Run full check
         shell: pwsh
-        run: .\scripts\test.ps1
+        run: npm run check
 
       - name: Upload WASM build
         uses: actions/upload-artifact@v4

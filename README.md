@@ -1,6 +1,6 @@
 # Iron Canvas
 
-Current demo version: `v0.3.0`
+Current demo version: `v0.3.2`
 
 [![CI](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml)
 [![Deploy Web Demo](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml)
@@ -14,10 +14,10 @@ Repository: [github.com/Hibob555556/IronCanvas](https://github.com/Hibob555556/I
 ## Highlights
 
 - Rust geometry engine compiled to WebAssembly
-- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, and `v0.3.0` shaded cube
+- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, and `v0.3.2` shaded cube
 - Canvas UI with version, angle, axis, rotate, and reset controls
 - Cube edge vertices plus Rust-owned face vertices for shaded rendering
-- X, Y, Z, and whole-cube rotation options
+- X, Y, and Z rotation options
 - Axis guide overlays that show the selected rotation axis
 - JavaScript avoids trig-based rotation in the primary WASM path
 - Rust unit tests, Rust integration tests, web static tests, and WASM runtime tests
@@ -30,7 +30,6 @@ The latest version starts with a cube represented as 12 explicit edge pairs and 
 When the user selects an angle and axis, then clicks `Rotate`, JavaScript calls the matching Rust/WASM export:
 
 ```js
-wasmExports.rotate_current_cube_xyz(degrees);
 wasmExports.rotate_current_cube_x(degrees);
 wasmExports.rotate_current_cube_y(degrees);
 wasmExports.rotate_current_rectangle_z(degrees);
@@ -44,7 +43,9 @@ If `web/iron_canvas.wasm` is missing during local development, the page falls ba
 
 | Version | Demo | Notes |
 | --- | --- | --- |
-| `v0.3.0` | Shaded cube | Adds Rust-owned face vertices, translucent face rendering, selected-axis guides, and whole-cube rotation. |
+| `v0.3.2` | Shaded cube | Improves 45-degree readability with a steadier canvas camera and camera-depth face ordering. |
+| `v0.3.1` | Shaded cube | Removes the whole-cube shortcut, keeps explicit X/Y/Z rotation, and stabilizes rotation framing. |
+| `v0.3.0` | Shaded cube | Adds Rust-owned face vertices, translucent face rendering, selected-axis guides, and X/Y/Z rotation controls. |
 | `v0.2.0` | Wire cube | Replaces the flat rectangle with 12 cube edge pairs and a projected 3D view. |
 | `v0.1.0` | Rectangle rotation | Preserves the original flat rectangle outline and clockwise Z-axis rotation behavior. |
 
@@ -83,7 +84,6 @@ rotate_current_rectangle_z(degrees)
 rotate_current_rectangle_90_clockwise()
 rotate_current_cube_x(degrees)
 rotate_current_cube_y(degrees)
-rotate_current_cube_xyz(degrees)
 ```
 
 `VERTICES` stores the cube wireframe as edge pairs. `FACE_VERTICES` stores six quad faces. Runtime buffers are reset from those constants, then transformed by iterating over each vertex and calling axis-specific Rust helpers:

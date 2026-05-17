@@ -117,13 +117,14 @@ const axisGuides = {
 };
 
 const versions = {
-  "0.3.0": {
-    title: "v0.3.0 Shaded cube",
+  "0.3.2": {
+    title: "v0.3.2 Shaded cube",
     summary:
-      "Filled cube faces, visible axis guides, and whole-cube rotation make the 3D motion easier to read.",
+      "Filled cube faces and visible axis guides make the X, Y, and Z rotations easier to read.",
     vertices: fallbackVertices,
     faces: fallbackFaces,
     center: [1.0, 1.0, 1.0],
+    projection: "dimetric",
     edgeMode: "pairs",
     axes: true,
     topLabel: { start: 2, end: 3, text: "TOP" },
@@ -135,6 +136,7 @@ const versions = {
     vertices: fallbackVertices,
     faces: [],
     center: [1.0, 1.0, 1.0],
+    projection: "dimetric",
     edgeMode: "pairs",
     axes: true,
     topLabel: { start: 2, end: 3, text: "TOP" },
@@ -146,13 +148,14 @@ const versions = {
     vertices: rectangleVertices,
     faces: [],
     center: [1.5, 1.0, 0.0],
+    projection: "flat",
     edgeMode: "path",
     axes: false,
     topLabel: { start: 2, end: 5, text: "TOP" },
   },
 };
 
-function createFallbackRuntime(loadError, version = versions["0.3.0"]) {
+function createFallbackRuntime(loadError, version = versions["0.3.2"]) {
   if (loadError) {
     console.warn(loadError);
   }
@@ -250,11 +253,6 @@ function createFallbackRuntime(loadError, version = versions["0.3.0"]) {
     rotate_current_rectangle_z(degrees) {
       rotateAll(degrees, "z");
     },
-    rotate_current_cube_xyz(degrees) {
-      rotateAll(degrees, "x");
-      rotateAll(degrees, "y");
-      rotateAll(degrees, "z");
-    },
   };
 }
 
@@ -309,7 +307,28 @@ function currentFacesFromRust() {
 
 function projectVertex(vertex) {
   const [x, y, z] = vertex;
-  return [x + z * 0.62, y + z * 0.42];
+
+  if (activeVersion.projection === "flat") {
+    return [x, y];
+  }
+
+  const centeredX = x - activeVersion.center[0];
+  const centeredY = y - activeVersion.center[1];
+  const centeredZ = z - activeVersion.center[2];
+
+  return [
+    activeVersion.center[0] + centeredX * 0.86 - centeredZ * 0.5,
+    activeVersion.center[1] + centeredY * 0.95 + (centeredX + centeredZ) * 0.22,
+  ];
+}
+
+function cameraDepth(vertex) {
+  const [x, y, z] = vertex;
+  const centeredX = x - activeVersion.center[0];
+  const centeredY = y - activeVersion.center[1];
+  const centeredZ = z - activeVersion.center[2];
+
+  return centeredX * 0.35 + centeredZ * 0.75 - centeredY * 0.1;
 }
 
 function createViewBounds(vertices, faces = []) {
@@ -344,10 +363,14 @@ function fitToCanvas() {
     (canvas.width - padding * 2) / width,
     (canvas.height - padding * 2) / height,
   );
+  const scaledWidth = width * scale;
+  const scaledHeight = height * scale;
+  const offsetX = (canvas.width - scaledWidth) / 2;
+  const offsetY = (canvas.height - scaledHeight) / 2;
 
   return (vertex) => [
-    padding + (projectVertex(vertex)[0] - viewBounds.minX) * scale,
-    canvas.height - padding - (projectVertex(vertex)[1] - viewBounds.minY) * scale,
+    offsetX + (projectVertex(vertex)[0] - viewBounds.minX) * scale,
+    canvas.height - offsetY - (projectVertex(vertex)[1] - viewBounds.minY) * scale,
   ];
 }
 
@@ -379,7 +402,7 @@ function drawFaces(faces, project) {
     .map((face, index) => ({
       face,
       index,
-      depth: face.reduce((total, vertex) => total + vertex[2], 0) / face.length,
+      depth: face.reduce((total, vertex) => total + cameraDepth(vertex), 0) / face.length,
     }))
     .sort((a, b) => a.depth - b.depth)
     .forEach(({ face, index }) => {
@@ -409,8 +432,7 @@ function drawAxisGuides(project) {
     return;
   }
 
-  const selectedAxis = axisSelect.value;
-  const guideKeys = selectedAxis === "xyz" ? ["x", "y", "z"] : [selectedAxis];
+  const guideKeys = [axisSelect.value];
 
   guideKeys.forEach((key) => {
     const guide = axisGuides[key];
@@ -564,7 +586,7 @@ function selectVersion(versionKey) {
   activeVersion = versions[versionKey];
   const wasAxisDisabled = axisSelect.disabled;
 
-  if (versionKey === "0.3.0" && loadedWasmExports) {
+  if (versionKey === "0.3.2" && loadedWasmExports) {
     wasmExports = loadedWasmExports;
   } else {
     wasmExports = createFallbackRuntime(null, activeVersion);
@@ -575,7 +597,7 @@ function selectVersion(versionKey) {
   if (!activeVersion.axes) {
     axisSelect.value = "z";
   } else if (wasAxisDisabled) {
-    axisSelect.value = "xyz";
+    axisSelect.value = "y";
   }
 
   syncChangelog(versionKey);
@@ -587,15 +609,12 @@ function rotateCurrentDemo(degrees, axis) {
     wasmExports.rotate_current_cube_x(degrees);
   } else if (axis === "y" && typeof wasmExports.rotate_current_cube_y === "function") {
     wasmExports.rotate_current_cube_y(degrees);
-  } else if (axis === "xyz" && typeof wasmExports.rotate_current_cube_xyz === "function") {
-    wasmExports.rotate_current_cube_xyz(degrees);
   } else {
     wasmExports.rotate_current_rectangle_z(degrees);
   }
 
   currentVertices = currentVerticesFromRust();
   currentFaces = currentFacesFromRust();
-  viewBounds = createViewBounds(currentVertices, currentFaces);
   rotation = (rotation + degrees) % 360;
   render();
 }

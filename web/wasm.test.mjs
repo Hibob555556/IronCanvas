@@ -38,7 +38,7 @@ test("wasm exports the cube runtime API with compatibility names", async () => {
   assert.equal(typeof exports.rotate_current_cube_x, "function");
   assert.equal(typeof exports.rotate_current_cube_y, "function");
   assert.equal(typeof exports.rotate_current_rectangle_z, "function");
-  assert.equal(typeof exports.rotate_current_cube_xyz, "function");
+  assert.equal(typeof exports.rotate_current_cube_xyz, "undefined");
   assert.equal(exports.rectangle_vertex_count(), 24);
   assert.equal(exports.cube_face_vertex_count(), 24);
 });
@@ -63,4 +63,22 @@ test("wasm rotates cube edges clockwise and avoids negative zero", async () => {
   assertClose(vertices[0], 0);
   assertClose(vertices[1], 2);
   assert.equal(vertices.some((value) => Object.is(value, -0)), false);
+});
+
+test("wasm rotates cube around explicit X and Y axes", async () => {
+  const exports = await loadWasm();
+
+  exports.reset_current_rectangle();
+  exports.rotate_current_cube_x(90);
+  let vertices = verticesFromExports(exports);
+  assertClose(vertices[0], 0);
+  assertClose(vertices[1], 0);
+  assertClose(vertices[2], 2);
+
+  exports.reset_current_rectangle();
+  exports.rotate_current_cube_y(90);
+  vertices = verticesFromExports(exports);
+  assertClose(vertices[0], 2);
+  assertClose(vertices[1], 0);
+  assertClose(vertices[2], 0);
 });

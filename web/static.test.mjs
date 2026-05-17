@@ -29,10 +29,13 @@ test("index.html presents the demo as a portfolio case study", async () => {
   assert.match(html, /class="site-nav"/);
   assert.match(html, /Project logic/);
   assert.match(html, /Version history/);
-  assert.match(html, /v0\.3\.0 Shaded cube/);
+  assert.match(html, /v0\.3\.2 Shaded cube/);
+  assert.match(html, /v0\.3\.1/);
+  assert.match(html, /v0\.3\.0/);
   assert.match(html, /v0\.2\.0 Wire cube/);
   assert.match(html, /v0\.1\.0 Rectangle/);
-  assert.match(html, /whole-cube transform/);
+  assert.doesNotMatch(html, /<option value="xyz"[^>]*>Whole cube<\/option>/);
+  assert.match(html, /selected X, Y, or Z axis transform/);
   assert.match(html, /How a click becomes a transform/);
   assert.match(html, /Tested like a tiny production app/);
   assert.match(html, /Rust owns the math/);
@@ -56,9 +59,30 @@ test("main.js delegates rotation to Rust instead of doing trig itself", async ()
   const js = await readFile(new URL("./main.js", import.meta.url), "utf8");
 
   assert.match(js, /rotate_current_rectangle_z/);
-  assert.match(js, /rotate_current_cube_xyz/);
+  assert.match(js, /rotate_current_cube_x/);
+  assert.match(js, /rotate_current_cube_y/);
+  assert.doesNotMatch(js, /rotate_current_cube_xyz/);
   assert.match(js, /versionSelect/);
   assert.match(js, /versions/);
   assert.match(js, /0\.1\.0/);
   assert.doesNotMatch(js, /Math\.(sin|cos|tan)/);
+});
+
+test("main.js keeps the camera stable while rotating", async () => {
+  const js = await readFile(new URL("./main.js", import.meta.url), "utf8");
+
+  const rotateBody = js.match(/function rotateCurrentDemo\([^]*?\n}/)?.[0] ?? "";
+
+  assert.match(js, /function cameraDepth/);
+  assert.match(js, /cameraDepth\(vertex\)/);
+  assert.match(js, /\.sort\(\(a, b\) => a\.depth - b\.depth\)/);
+  assert.doesNotMatch(rotateBody, /viewBounds = createViewBounds/);
+});
+
+test("main.js keeps the rectangle demo on a flat camera", async () => {
+  const js = await readFile(new URL("./main.js", import.meta.url), "utf8");
+
+  assert.match(js, /projection: "flat"/);
+  assert.match(js, /projection: "dimetric"/);
+  assert.match(js, /if \(activeVersion\.projection === "flat"\) {\s*return \[x, y\];\s*}/);
 });
