@@ -1,51 +1,67 @@
 # Iron Canvas
 
+Current demo version: `v0.3.0`
+
 [![CI](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml)
 [![Deploy Web Demo](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml)
 
-Iron Canvas is a small Rust-to-WebAssembly geometry demo that renders and rotates a rectangle in the browser. The project is intentionally compact, but it is built like a real frontend systems project: Rust owns the geometry, WebAssembly exposes a narrow runtime API, and JavaScript handles only browser rendering and UI orchestration.
+Iron Canvas is a small Rust-to-WebAssembly geometry demo that renders versioned geometry in the browser. It began as a flat rectangle rotation demo and now includes a wireframe cube, shaded cube faces, axis guides, and a changelog-backed version switcher.
 
-The result is a visual playground for understanding how typed Rust data can move through WASM memory and become an interactive canvas experience.
+The project stays intentionally compact, but it is built like a real frontend systems project: Rust owns the live geometry buffers and transforms, WebAssembly exposes a narrow runtime API, and JavaScript handles browser rendering, controls, and version presentation.
 
 Repository: [github.com/Hibob555556/IronCanvas](https://github.com/Hibob555556/IronCanvas)
 
 ## Highlights
 
 - Rust geometry engine compiled to WebAssembly
-- Canvas UI with rotate/reset controls
-- Runtime `rotate_z` transformation with 45-degree and 90-degree options
-- JavaScript does not perform rotation math
-- Original vertex list remains the single source of truth
+- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, and `v0.3.0` shaded cube
+- Canvas UI with version, angle, axis, rotate, and reset controls
+- Cube edge vertices plus Rust-owned face vertices for shaded rendering
+- X, Y, Z, and whole-cube rotation options
+- Axis guide overlays that show the selected rotation axis
+- JavaScript avoids trig-based rotation in the primary WASM path
 - Rust unit tests, Rust integration tests, web static tests, and WASM runtime tests
 - GitHub Actions CI and GitHub Pages deployment workflow
-- Husky pre-commit hook for local quality checks
 
 ## Demo Behavior
 
-The app starts with a closed rectangle made from 11 vertices. The browser reads the vertex buffer from WASM memory, draws it to a canvas, and prints the current coordinates beside it.
+The latest version starts with a cube represented as 12 explicit edge pairs and six quad faces. The browser reads the edge and face buffers from WASM memory, projects the 3D coordinates onto a canvas, draws translucent faces, overlays the wireframe, and prints the current vertex coordinates beside it.
 
-When the user selects an angle and clicks `Rotate`, JavaScript calls the Rust/WASM API:
+When the user selects an angle and axis, then clicks `Rotate`, JavaScript calls the matching Rust/WASM export:
 
 ```js
+wasmExports.rotate_current_cube_xyz(degrees);
+wasmExports.rotate_current_cube_x(degrees);
+wasmExports.rotate_current_cube_y(degrees);
 wasmExports.rotate_current_rectangle_z(degrees);
 ```
 
-Rust mutates the current vertex buffer, JavaScript reads the updated buffer, and the canvas redraws. The `TOP` label marks the rectangle's original top edge so orientation is easy to track after rotation.
+The `rectangle_*` names remain for compatibility with the original demo, but the current default geometry is a cube. Rust mutates the runtime buffers, JavaScript reads the updated WASM memory, and the canvas redraws. The `TOP` label and colored axis guides make orientation easier to track after each rotation.
+
+If `web/iron_canvas.wasm` is missing during local development, the page falls back to a browser-side runtime so the demo can still be inspected. Rebuilding the WASM file restores the Rust-backed path.
+
+## Versions
+
+| Version | Demo | Notes |
+| --- | --- | --- |
+| `v0.3.0` | Shaded cube | Adds Rust-owned face vertices, translucent face rendering, selected-axis guides, and whole-cube rotation. |
+| `v0.2.0` | Wire cube | Replaces the flat rectangle with 12 cube edge pairs and a projected 3D view. |
+| `v0.1.0` | Rectangle rotation | Preserves the original flat rectangle outline and clockwise Z-axis rotation behavior. |
 
 ## Architecture
 
 ```text
 IronCanvas/
   src/
-    lib.rs              Rust geometry and WASM exports
+    lib.rs              Rust geometry buffers, transforms, and WASM exports
     rectangle.rs        Native CLI demo
   web/
-    index.html          Browser UI shell
-    main.js             Canvas rendering and WASM calls
+    index.html          Browser UI shell, version selector, and changelog
+    main.js             Canvas rendering, WASM calls, and dev fallback runtime
     styles.css          Portfolio-style visual design
-    *.test.mjs          Web and WASM tests
+    *.test.mjs          Web static and WASM runtime tests
   tests/
-    rectangle_api.rs    Rust integration tests
+    rectangle_api.rs    Rust integration tests for the compatibility API
   scripts/
     build-wasm.ps1      Builds and copies WASM into web/
     test.ps1            Full local/CI test suite
@@ -54,20 +70,27 @@ IronCanvas/
 
 ## Rust/WASM Boundary
 
-The Rust library exports a small C-compatible API:
+The Rust library exports a small C-compatible API. Some names still reference `rectangle` because they are the original public boundary:
 
 ```rust
 rectangle_vertex_count()
 rectangle_vertices_ptr()
 current_rectangle_vertices_ptr()
+cube_face_vertex_count()
+current_cube_face_vertices_ptr()
 reset_current_rectangle()
 rotate_current_rectangle_z(degrees)
 rotate_current_rectangle_90_clockwise()
+rotate_current_cube_x(degrees)
+rotate_current_cube_y(degrees)
+rotate_current_cube_xyz(degrees)
 ```
 
-`VERTICES` is the single source of truth. Rotated geometry is not precomputed or stored as a separate constant. The current runtime buffer is reset from `VERTICES`, then transformed by iterating over each vertex and calling:
+`VERTICES` stores the cube wireframe as edge pairs. `FACE_VERTICES` stores six quad faces. Runtime buffers are reset from those constants, then transformed by iterating over each vertex and calling axis-specific Rust helpers:
 
 ```rust
+pub fn rotate_x(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3]
+pub fn rotate_y(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3]
 pub fn rotate_z(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3]
 ```
 
@@ -135,7 +158,7 @@ npm run test:web
 Build WASM directly through Cargo:
 
 ```powershell
-cargo wasm
+cargo build --target wasm32-unknown-unknown --release --lib
 ```
 
 ## Test Coverage
@@ -143,8 +166,8 @@ cargo wasm
 The test suite checks the project at several layers:
 
 - Rust unit tests validate rotation behavior, center stability, and zero clamping.
-- Rust integration tests validate the public rectangle API, bounds, closure, and repeated rotations.
-- Web static tests validate the HTML/JS contract and verify rotation math is not implemented in JavaScript.
+- Rust integration tests validate the compatibility API, cube bounds, face counts, axis rotation, and repeated rotations.
+- Web static tests validate the HTML/JS contract, version controls, changelog content, and WASM delegation hooks.
 - WASM runtime tests instantiate the compiled module, inspect exports, reset vertices, rotate vertices, and verify negative zero does not leak into output.
 
 The local Husky pre-commit hook runs:
@@ -177,6 +200,7 @@ Iron Canvas is deliberately modest in scope, but it demonstrates a production-mi
 - WASM export design
 - Rust-owned transformation logic
 - browser canvas rendering
+- versioned UI behavior and changelog presentation
 - automated test coverage across native and WASM targets
 - CI/CD deployment for a static WebAssembly demo
 

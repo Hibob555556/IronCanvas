@@ -1,17 +1,262 @@
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
+const versionSelect = document.querySelector("#version-select");
 const angleSelect = document.querySelector("#angle-select");
+const axisSelect = document.querySelector("#axis-select");
 const rotateButton = document.querySelector("#rotate-button");
 const resetButton = document.querySelector("#reset-button");
 const verticesOutput = document.querySelector("#vertices-output");
 const rotationLabel = document.querySelector("#rotation-label");
+const versionTitle = document.querySelector("#version-title");
+const versionSummary = document.querySelector("#version-summary");
+const changelogEntries = document.querySelectorAll(".changelog-entry");
 
-const topEdgeStartIndex = 2;
-const topEdgeEndIndex = 5;
 let currentVertices = [];
+let currentFaces = [];
 let rotation = 0;
 let wasmExports = null;
+let loadedWasmExports = null;
 let viewBounds = null;
+let activeVersion = null;
+
+const rectangleVertices = [
+  [0.0, 0.0, 0.0],
+  [0.0, 1.0, 0.0],
+  [0.0, 2.0, 0.0],
+  [1.0, 2.0, 0.0],
+  [2.0, 2.0, 0.0],
+  [3.0, 2.0, 0.0],
+  [3.0, 1.0, 0.0],
+  [3.0, 0.0, 0.0],
+  [2.0, 0.0, 0.0],
+  [1.0, 0.0, 0.0],
+  [0.0, 0.0, 0.0],
+];
+
+const fallbackVertices = [
+  [0.0, 0.0, 0.0],
+  [0.0, 2.0, 0.0],
+  [0.0, 2.0, 0.0],
+  [2.0, 2.0, 0.0],
+  [2.0, 2.0, 0.0],
+  [2.0, 0.0, 0.0],
+  [2.0, 0.0, 0.0],
+  [0.0, 0.0, 0.0],
+  [0.0, 0.0, 2.0],
+  [0.0, 2.0, 2.0],
+  [0.0, 2.0, 2.0],
+  [2.0, 2.0, 2.0],
+  [2.0, 2.0, 2.0],
+  [2.0, 0.0, 2.0],
+  [2.0, 0.0, 2.0],
+  [0.0, 0.0, 2.0],
+  [0.0, 0.0, 0.0],
+  [0.0, 0.0, 2.0],
+  [0.0, 2.0, 0.0],
+  [0.0, 2.0, 2.0],
+  [2.0, 2.0, 0.0],
+  [2.0, 2.0, 2.0],
+  [2.0, 0.0, 0.0],
+  [2.0, 0.0, 2.0],
+];
+
+const fallbackFaces = [
+  [0.0, 0.0, 0.0],
+  [2.0, 0.0, 0.0],
+  [2.0, 2.0, 0.0],
+  [0.0, 2.0, 0.0],
+  [2.0, 0.0, 0.0],
+  [2.0, 0.0, 2.0],
+  [2.0, 2.0, 2.0],
+  [2.0, 2.0, 0.0],
+  [0.0, 0.0, 2.0],
+  [0.0, 2.0, 2.0],
+  [2.0, 2.0, 2.0],
+  [2.0, 0.0, 2.0],
+  [0.0, 0.0, 0.0],
+  [0.0, 2.0, 0.0],
+  [0.0, 2.0, 2.0],
+  [0.0, 0.0, 2.0],
+  [0.0, 2.0, 0.0],
+  [2.0, 2.0, 0.0],
+  [2.0, 2.0, 2.0],
+  [0.0, 2.0, 2.0],
+  [0.0, 0.0, 0.0],
+  [0.0, 0.0, 2.0],
+  [2.0, 0.0, 2.0],
+  [2.0, 0.0, 0.0],
+];
+
+const faceColors = [
+  "rgba(124, 240, 207, 0.24)",
+  "rgba(255, 210, 121, 0.24)",
+  "rgba(112, 167, 255, 0.25)",
+  "rgba(255, 140, 107, 0.22)",
+  "rgba(180, 255, 205, 0.22)",
+  "rgba(214, 172, 255, 0.2)",
+];
+const axisGuides = {
+  x: {
+    label: "X",
+    color: "#ff8c6b",
+    start: [-0.7, 1.0, 1.0],
+    end: [2.7, 1.0, 1.0],
+  },
+  y: {
+    label: "Y",
+    color: "#ffd279",
+    start: [1.0, -0.7, 1.0],
+    end: [1.0, 2.7, 1.0],
+  },
+  z: {
+    label: "Z",
+    color: "#70a7ff",
+    start: [1.0, 1.0, -0.7],
+    end: [1.0, 1.0, 2.7],
+  },
+};
+
+const versions = {
+  "0.3.0": {
+    title: "v0.3.0 Shaded cube",
+    summary:
+      "Filled cube faces, visible axis guides, and whole-cube rotation make the 3D motion easier to read.",
+    vertices: fallbackVertices,
+    faces: fallbackFaces,
+    center: [1.0, 1.0, 1.0],
+    edgeMode: "pairs",
+    axes: true,
+    topLabel: { start: 2, end: 3, text: "TOP" },
+  },
+  "0.2.0": {
+    title: "v0.2.0 Wire cube",
+    summary:
+      "The rectangle becomes a 3D wire cube made from explicit edge pairs, with no filled faces yet.",
+    vertices: fallbackVertices,
+    faces: [],
+    center: [1.0, 1.0, 1.0],
+    edgeMode: "pairs",
+    axes: true,
+    topLabel: { start: 2, end: 3, text: "TOP" },
+  },
+  "0.1.0": {
+    title: "v0.1.0 Rectangle rotation",
+    summary:
+      "The original flat rectangle outline rotates clockwise around its Z-axis through Rust-owned vertex data.",
+    vertices: rectangleVertices,
+    faces: [],
+    center: [1.5, 1.0, 0.0],
+    edgeMode: "path",
+    axes: false,
+    topLabel: { start: 2, end: 5, text: "TOP" },
+  },
+};
+
+function createFallbackRuntime(loadError, version = versions["0.3.0"]) {
+  if (loadError) {
+    console.warn(loadError);
+  }
+
+  const sourceVertices = version.vertices;
+  const sourceFaces = version.faces;
+  const edgeFloatCount = sourceVertices.length * 3;
+  const faceFloatCount = sourceFaces.length * 3;
+  const faceByteOffset = edgeFloatCount * 4;
+  const memory = {
+    buffer: new ArrayBuffer((edgeFloatCount + faceFloatCount) * 4),
+  };
+  const edgeFloats = new Float32Array(memory.buffer, 0, edgeFloatCount);
+  const faceFloats = new Float32Array(memory.buffer, faceByteOffset, faceFloatCount);
+  const center = version.center;
+
+  function writeVertices(target, vertices) {
+    vertices.flat().forEach((value, index) => {
+      target[index] = value;
+    });
+  }
+
+  function angleValues(degrees) {
+    const normalized = ((degrees % 360) + 360) % 360;
+    const diagonal = 0.7071067811865476;
+
+    if (normalized === 45) return [diagonal, -diagonal];
+    if (normalized === 90) return [0.0, -1.0];
+    if (normalized === 135) return [-diagonal, -diagonal];
+    if (normalized === 180) return [-1.0, 0.0];
+    if (normalized === 225) return [-diagonal, diagonal];
+    if (normalized === 270) return [0.0, 1.0];
+    if (normalized === 315) return [diagonal, diagonal];
+
+    return [1.0, 0.0];
+  }
+
+  function rotateBuffer(target, degrees, axis) {
+    const [c, s] = angleValues(degrees);
+
+    for (let index = 0; index < target.length; index += 3) {
+      const x = target[index] - center[0];
+      const y = target[index + 1] - center[1];
+      const z = target[index + 2] - center[2];
+
+      if (axis === "x") {
+        target[index + 1] = center[1] + y * c - z * s;
+        target[index + 2] = center[2] + y * s + z * c;
+      }
+
+      if (axis === "y") {
+        target[index] = center[0] + x * c + z * s;
+        target[index + 2] = center[2] - x * s + z * c;
+      }
+
+      if (axis === "z") {
+        target[index] = center[0] + x * c - y * s;
+        target[index + 1] = center[1] + x * s + y * c;
+      }
+    }
+  }
+
+  function rotateAll(degrees, axis) {
+    rotateBuffer(edgeFloats, degrees, axis);
+    rotateBuffer(faceFloats, degrees, axis);
+  }
+
+  writeVertices(edgeFloats, sourceVertices);
+  writeVertices(faceFloats, sourceFaces);
+
+  return {
+    memory,
+    rectangle_vertex_count() {
+      return sourceVertices.length;
+    },
+    current_rectangle_vertices_ptr() {
+      return 0;
+    },
+    cube_face_vertex_count() {
+      return sourceFaces.length;
+    },
+    current_cube_face_vertices_ptr() {
+      return faceByteOffset;
+    },
+    reset_current_rectangle() {
+      writeVertices(edgeFloats, sourceVertices);
+      writeVertices(faceFloats, sourceFaces);
+    },
+    rotate_current_cube_x(degrees) {
+      rotateAll(degrees, "x");
+    },
+    rotate_current_cube_y(degrees) {
+      rotateAll(degrees, "y");
+    },
+    rotate_current_rectangle_z(degrees) {
+      rotateAll(degrees, "z");
+    },
+    rotate_current_cube_xyz(degrees) {
+      rotateAll(degrees, "x");
+      rotateAll(degrees, "y");
+      rotateAll(degrees, "z");
+    },
+  };
+}
 
 function verticesFromWasm(exports, ptr) {
   const count = exports.rectangle_vertex_count();
@@ -35,9 +280,44 @@ function currentVerticesFromRust() {
   return verticesFromWasm(wasmExports, ptr);
 }
 
-function createViewBounds(vertices) {
-  const xs = vertices.map((vertex) => vertex[0]);
-  const ys = vertices.map((vertex) => vertex[1]);
+function currentFacesFromRust() {
+  if (
+    typeof wasmExports.cube_face_vertex_count !== "function" ||
+    typeof wasmExports.current_cube_face_vertices_ptr !== "function"
+  ) {
+    return [];
+  }
+
+  const count = wasmExports.cube_face_vertex_count();
+  const ptr = wasmExports.current_cube_face_vertices_ptr();
+  const floats = new Float32Array(wasmExports.memory.buffer, ptr, count * 3);
+  const faces = [];
+
+  for (let index = 0; index < count; index += 4) {
+    const face = [];
+
+    for (let corner = 0; corner < 4; corner += 1) {
+      const offset = (index + corner) * 3;
+      face.push([floats[offset], floats[offset + 1], floats[offset + 2]]);
+    }
+
+    faces.push(face);
+  }
+
+  return faces;
+}
+
+function projectVertex(vertex) {
+  const [x, y, z] = vertex;
+  return [x + z * 0.62, y + z * 0.42];
+}
+
+function createViewBounds(vertices, faces = []) {
+  const faceVertices = faces.flat();
+  const allVertices = [...vertices, ...faceVertices];
+  const projected = allVertices.map(projectVertex);
+  const xs = projected.map((vertex) => vertex[0]);
+  const ys = projected.map((vertex) => vertex[1]);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -66,8 +346,8 @@ function fitToCanvas() {
   );
 
   return (vertex) => [
-    padding + (vertex[0] - viewBounds.minX) * scale,
-    canvas.height - padding - (vertex[1] - viewBounds.minY) * scale,
+    padding + (projectVertex(vertex)[0] - viewBounds.minX) * scale,
+    canvas.height - padding - (projectVertex(vertex)[1] - viewBounds.minY) * scale,
   ];
 }
 
@@ -94,25 +374,104 @@ function drawGrid() {
   }
 }
 
-function drawVertices(vertices) {
+function drawFaces(faces, project) {
+  faces
+    .map((face, index) => ({
+      face,
+      index,
+      depth: face.reduce((total, vertex) => total + vertex[2], 0) / face.length,
+    }))
+    .sort((a, b) => a.depth - b.depth)
+    .forEach(({ face, index }) => {
+      ctx.beginPath();
+
+      face.forEach((vertex, corner) => {
+        const [x, y] = project(vertex);
+
+        if (corner === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+
+      ctx.closePath();
+      ctx.fillStyle = faceColors[index % faceColors.length];
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.lineWidth = 1;
+      ctx.fill();
+      ctx.stroke();
+    });
+}
+
+function drawAxisGuides(project) {
+  if (!activeVersion?.axes) {
+    return;
+  }
+
+  const selectedAxis = axisSelect.value;
+  const guideKeys = selectedAxis === "xyz" ? ["x", "y", "z"] : [selectedAxis];
+
+  guideKeys.forEach((key) => {
+    const guide = axisGuides[key];
+    const [startX, startY] = project(guide.start);
+    const [endX, endY] = project(guide.end);
+
+    ctx.save();
+    ctx.strokeStyle = guide.color;
+    ctx.fillStyle = guide.color;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([12, 8]);
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = "800 14px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(guide.label, endX, endY - 18);
+    ctx.restore();
+  });
+}
+
+function drawVertices(vertices, faces) {
   const project = fitToCanvas();
 
   drawGrid();
+  drawFaces(faces, project);
+  drawAxisGuides(project);
 
   ctx.strokeStyle = "#7cf0cf";
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 4;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   ctx.beginPath();
 
-  vertices.forEach((vertex, index) => {
-    const [x, y] = project(vertex);
-    if (index === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
+  if (activeVersion?.edgeMode === "path") {
+    vertices.forEach((vertex, index) => {
+      const [x, y] = project(vertex);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+  } else {
+    for (let index = 0; index < vertices.length; index += 2) {
+      const [startX, startY] = project(vertices[index]);
+      const [endX, endY] = project(vertices[index + 1]);
+
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
     }
-  });
+  }
 
   ctx.stroke();
 
@@ -124,8 +483,9 @@ function drawVertices(vertices) {
     ctx.fill();
   });
 
-  const [startX, startY] = project(vertices[topEdgeStartIndex]);
-  const [endX, endY] = project(vertices[topEdgeEndIndex]);
+  const label = activeVersion?.topLabel;
+  const [startX, startY] = project(vertices[label.start]);
+  const [endX, endY] = project(vertices[label.end]);
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
@@ -133,7 +493,7 @@ function drawVertices(vertices) {
   ctx.font = "700 16px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("TOP", labelX, labelY - 18);
+  ctx.fillText(label.text, labelX, labelY - 18);
 }
 
 function formatVertices(vertices) {
@@ -149,39 +509,117 @@ function formatVertices(vertices) {
 }
 
 function render() {
-  drawVertices(currentVertices);
+  drawVertices(currentVertices, currentFaces);
   verticesOutput.textContent = formatVertices(currentVertices);
-  rotationLabel.textContent = `${rotation} degrees`;
+  rotationLabel.textContent = `${activeVersion.title} | ${rotation} degrees | ${axisSelect.selectedOptions[0].textContent}`;
 }
 
 async function loadWasm() {
-  const response = await fetch("./iron_canvas.wasm");
+  const wasmUrl = new URL("./iron_canvas.wasm", import.meta.url);
+  const response = await fetch(wasmUrl);
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not fetch ${wasmUrl.pathname}. Build the Rust module so web/iron_canvas.wasm exists.`,
+    );
+  }
+
   const bytes = await response.arrayBuffer();
+  const signature = new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 4));
+  const isWasm =
+    signature[0] === 0x00 &&
+    signature[1] === 0x61 &&
+    signature[2] === 0x73 &&
+    signature[3] === 0x6d;
+
+  if (!isWasm) {
+    throw new Error(
+      `Expected a WebAssembly binary at ${wasmUrl.pathname}, but the server returned another file. Build and serve web/iron_canvas.wasm next to index.html.`,
+    );
+  }
+
   const wasm = await WebAssembly.instantiate(bytes);
   return wasm.instance.exports;
 }
 
-rotateButton.addEventListener("click", () => {
-  const degrees = Number(angleSelect.value);
-  wasmExports.rotate_current_rectangle_z(degrees);
+function syncChangelog(versionKey) {
+  versionTitle.textContent = activeVersion.title;
+  versionSummary.textContent = activeVersion.summary;
+
+  changelogEntries.forEach((entry) => {
+    entry.classList.toggle("is-active", entry.dataset.version === versionKey);
+  });
+}
+
+function resetCurrentDemo() {
+  wasmExports.reset_current_rectangle();
   currentVertices = currentVerticesFromRust();
+  currentFaces = currentFacesFromRust();
+  viewBounds = createViewBounds(currentVertices, currentFaces);
+  rotation = 0;
+  render();
+}
+
+function selectVersion(versionKey) {
+  activeVersion = versions[versionKey];
+  const wasAxisDisabled = axisSelect.disabled;
+
+  if (versionKey === "0.3.0" && loadedWasmExports) {
+    wasmExports = loadedWasmExports;
+  } else {
+    wasmExports = createFallbackRuntime(null, activeVersion);
+  }
+
+  axisSelect.disabled = !activeVersion.axes;
+
+  if (!activeVersion.axes) {
+    axisSelect.value = "z";
+  } else if (wasAxisDisabled) {
+    axisSelect.value = "xyz";
+  }
+
+  syncChangelog(versionKey);
+  resetCurrentDemo();
+}
+
+function rotateCurrentDemo(degrees, axis) {
+  if (axis === "x" && typeof wasmExports.rotate_current_cube_x === "function") {
+    wasmExports.rotate_current_cube_x(degrees);
+  } else if (axis === "y" && typeof wasmExports.rotate_current_cube_y === "function") {
+    wasmExports.rotate_current_cube_y(degrees);
+  } else if (axis === "xyz" && typeof wasmExports.rotate_current_cube_xyz === "function") {
+    wasmExports.rotate_current_cube_xyz(degrees);
+  } else {
+    wasmExports.rotate_current_rectangle_z(degrees);
+  }
+
+  currentVertices = currentVerticesFromRust();
+  currentFaces = currentFacesFromRust();
+  viewBounds = createViewBounds(currentVertices, currentFaces);
   rotation = (rotation + degrees) % 360;
   render();
+}
+
+rotateButton.addEventListener("click", () => {
+  rotateCurrentDemo(Number(angleSelect.value), axisSelect.value);
 });
 
 resetButton.addEventListener("click", () => {
-  wasmExports.reset_current_rectangle();
-  currentVertices = currentVerticesFromRust();
-  rotation = 0;
+  resetCurrentDemo();
+});
+
+versionSelect.addEventListener("change", () => {
+  selectVersion(versionSelect.value);
+});
+
+axisSelect.addEventListener("change", () => {
   render();
 });
 
 try {
-  wasmExports = await loadWasm();
-  wasmExports.reset_current_rectangle();
-  currentVertices = currentVerticesFromRust();
-  viewBounds = createViewBounds(currentVertices);
-  render();
+  loadedWasmExports = await loadWasm();
 } catch (error) {
-  verticesOutput.textContent = `Could not load WASM: ${error.message}`;
+  console.warn(error);
 }
+
+selectVersion(versionSelect.value);

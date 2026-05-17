@@ -4,47 +4,166 @@ pub struct Vertex {
     pub position: [f32; 3],
 }
 
-pub const CENTER: [f32; 3] = [1.5, 1.0, 0.0];
-const VERTEX_COUNT: usize = 11;
+pub const CENTER: [f32; 3] = [1.0, 1.0, 1.0];
+const VERTEX_COUNT: usize = 24;
+const FACE_VERTEX_COUNT: usize = 24;
 const ZERO_EPSILON: f32 = 0.000_001;
 
 const VERTICES: [Vertex; VERTEX_COUNT] = [
+    // Front face, z = 0.0.
     Vertex {
         position: [0.0, 0.0, 0.0],
-    },
-    Vertex {
-        position: [0.0, 1.0, 0.0],
     },
     Vertex {
         position: [0.0, 2.0, 0.0],
     },
     Vertex {
-        position: [1.0, 2.0, 0.0],
+        position: [0.0, 2.0, 0.0],
     },
     Vertex {
         position: [2.0, 2.0, 0.0],
     },
     Vertex {
-        position: [3.0, 2.0, 0.0],
-    },
-    Vertex {
-        position: [3.0, 1.0, 0.0],
-    },
-    Vertex {
-        position: [3.0, 0.0, 0.0],
+        position: [2.0, 2.0, 0.0],
     },
     Vertex {
         position: [2.0, 0.0, 0.0],
     },
     Vertex {
-        position: [1.0, 0.0, 0.0],
+        position: [2.0, 0.0, 0.0],
     },
     Vertex {
         position: [0.0, 0.0, 0.0],
     },
+    // Back face, z = 2.0.
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    // Connecting edges between faces.
+    Vertex {
+        position: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+];
+
+const FACE_VERTICES: [Vertex; FACE_VERTEX_COUNT] = [
+    Vertex {
+        position: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 0.0],
+    },
+    Vertex {
+        position: [2.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 2.0, 2.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 0.0],
+    },
+    Vertex {
+        position: [0.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 2.0],
+    },
+    Vertex {
+        position: [2.0, 0.0, 0.0],
+    },
 ];
 
 static mut CURRENT_VERTICES: [Vertex; VERTEX_COUNT] = VERTICES;
+static mut CURRENT_FACE_VERTICES: [Vertex; FACE_VERTEX_COUNT] = FACE_VERTICES;
 
 pub fn rectangle_vertices() -> &'static [Vertex] {
     &VERTICES
@@ -66,12 +185,27 @@ pub extern "C" fn current_rectangle_vertices_ptr() -> *const f32 {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn cube_face_vertex_count() -> usize {
+    FACE_VERTICES.len()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn current_cube_face_vertices_ptr() -> *const f32 {
+    core::ptr::addr_of!(CURRENT_FACE_VERTICES) as *const Vertex as *const f32
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn reset_current_rectangle() {
     unsafe {
         core::ptr::copy_nonoverlapping(
             VERTICES.as_ptr(),
             core::ptr::addr_of_mut!(CURRENT_VERTICES) as *mut Vertex,
             VERTEX_COUNT,
+        );
+        core::ptr::copy_nonoverlapping(
+            FACE_VERTICES.as_ptr(),
+            core::ptr::addr_of_mut!(CURRENT_FACE_VERTICES) as *mut Vertex,
+            FACE_VERTEX_COUNT,
         );
     }
 }
@@ -88,6 +222,46 @@ pub extern "C" fn rotate_current_rectangle_z(degrees: f32) {
         VERTEX_COUNT,
         degrees,
     );
+    rotate_rectangle_z(
+        core::ptr::addr_of_mut!(CURRENT_FACE_VERTICES) as *mut Vertex,
+        FACE_VERTEX_COUNT,
+        degrees,
+    );
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rotate_current_cube_x(degrees: f32) {
+    rotate_rectangle_x(
+        core::ptr::addr_of_mut!(CURRENT_VERTICES) as *mut Vertex,
+        VERTEX_COUNT,
+        degrees,
+    );
+    rotate_rectangle_x(
+        core::ptr::addr_of_mut!(CURRENT_FACE_VERTICES) as *mut Vertex,
+        FACE_VERTEX_COUNT,
+        degrees,
+    );
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rotate_current_cube_y(degrees: f32) {
+    rotate_rectangle_y(
+        core::ptr::addr_of_mut!(CURRENT_VERTICES) as *mut Vertex,
+        VERTEX_COUNT,
+        degrees,
+    );
+    rotate_rectangle_y(
+        core::ptr::addr_of_mut!(CURRENT_FACE_VERTICES) as *mut Vertex,
+        FACE_VERTEX_COUNT,
+        degrees,
+    );
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rotate_current_cube_xyz(degrees: f32) {
+    rotate_current_cube_x(degrees);
+    rotate_current_cube_y(degrees);
+    rotate_current_rectangle_z(degrees);
 }
 
 #[unsafe(no_mangle)]
@@ -106,6 +280,60 @@ pub extern "C" fn rotate_rectangle_z(vertices_ptr: *mut Vertex, vertex_count: us
     for vertex in vertices.iter_mut() {
         vertex.position = rotate_z(vertex.position, CENTER, degrees);
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rotate_rectangle_x(vertices_ptr: *mut Vertex, vertex_count: usize, degrees: f32) {
+    if vertices_ptr.is_null() {
+        return;
+    }
+
+    let vertices = unsafe { std::slice::from_raw_parts_mut(vertices_ptr, vertex_count) };
+
+    for vertex in vertices.iter_mut() {
+        vertex.position = rotate_x(vertex.position, CENTER, degrees);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rotate_rectangle_y(vertices_ptr: *mut Vertex, vertex_count: usize, degrees: f32) {
+    if vertices_ptr.is_null() {
+        return;
+    }
+
+    let vertices = unsafe { std::slice::from_raw_parts_mut(vertices_ptr, vertex_count) };
+
+    for vertex in vertices.iter_mut() {
+        vertex.position = rotate_y(vertex.position, CENTER, degrees);
+    }
+}
+
+pub fn rotate_x(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3] {
+    let angle = -degrees.to_radians();
+
+    let x = position[0];
+    let y = position[1] - center[1];
+    let z = position[2] - center[2];
+
+    [
+        clamp_zero(x),
+        clamp_zero(center[1] + y * angle.cos() - z * angle.sin()),
+        clamp_zero(center[2] + y * angle.sin() + z * angle.cos()),
+    ]
+}
+
+pub fn rotate_y(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3] {
+    let angle = -degrees.to_radians();
+
+    let x = position[0] - center[0];
+    let y = position[1];
+    let z = position[2] - center[2];
+
+    [
+        clamp_zero(center[0] + x * angle.cos() + z * angle.sin()),
+        clamp_zero(y),
+        clamp_zero(center[2] - x * angle.sin() + z * angle.cos()),
+    ]
 }
 
 pub fn rotate_z(position: [f32; 3], center: [f32; 3], degrees: f32) -> [f32; 3] {
@@ -154,8 +382,8 @@ mod tests {
     fn rotate_z_uses_clockwise_positive_degrees() {
         let rotated = rotate_z([0.0, 0.0, 0.0], CENTER, 90.0);
 
-        assert_close(rotated[0], 0.5);
-        assert_close(rotated[1], 2.5);
+        assert_close(rotated[0], 0.0);
+        assert_close(rotated[1], 2.0);
         assert_close(rotated[2], 0.0);
     }
 

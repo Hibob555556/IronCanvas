@@ -9,11 +9,11 @@
     <meta name="author" content="Cayden Lunt" />
     <meta
       name="description"
-      content="Iron Canvas is a Rust and WebAssembly portfolio project that renders rectangle vertices in the browser, rotates them with Rust-owned geometry logic, and visualizes the result on canvas."
+      content="Iron Canvas is a Rust and WebAssembly portfolio project that renders cube vertices in the browser, rotates them with Rust-owned geometry logic, and visualizes the result on canvas."
     />
     <meta
       name="keywords"
-      content="Iron Canvas, Rust WebAssembly, WASM geometry demo, Rust canvas demo, WebAssembly portfolio project, Cayden Lunt, rectangle rotation, Rust frontend project"
+      content="Iron Canvas, Rust WebAssembly, WASM geometry demo, Rust canvas demo, WebAssembly portfolio project, Cayden Lunt, cube rotation, Rust frontend project"
     />
     <meta name="theme-color" content="#07111f" />
     <meta property="og:locale" content="en_US" />
@@ -24,7 +24,7 @@
     />
     <meta
       property="og:description"
-      content="A portfolio-ready Rust and WebAssembly geometry demo where Rust owns rectangle rotation logic and the browser renders the live vertex buffer on canvas."
+      content="A portfolio-ready Rust and WebAssembly geometry demo where Rust owns cube rotation logic and the browser renders the live vertex buffer on canvas."
     />
     <meta
       property="og:url"
@@ -68,7 +68,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "Iron Canvas",
-        "description": "A Rust and WebAssembly geometry demo that renders and rotates rectangle vertices in the browser.",
+        "description": "A Rust and WebAssembly geometry demo that renders and rotates cube vertices in the browser.",
         "url": "https://hibob555556.github.io/IronCanvas/",
         "codeRepository": "https://github.com/Hibob555556/IronCanvas",
         "programmingLanguage": ["Rust", "JavaScript", "WebAssembly"],
@@ -102,6 +102,7 @@
       <nav class="site-nav" aria-label="Primary">
         <a href="https://www.caydenlunt.com">Home</a>
         <a href="#demo">Demo</a>
+        <a href="#versions">Versions</a>
         <a href="#logic">Logic</a>
         <a href="#implementation">Flow</a>
         <a href="#quality">Quality</a>
@@ -115,21 +116,38 @@
           <p class="eyebrow">Rust + WebAssembly geometry</p>
           <h1>Iron Canvas</h1>
           <p class="intro">
-            A browser-based rectangle transform demo where Rust owns the
+            A browser-based cube transform demo where Rust owns the
             geometry, WebAssembly exposes the runtime API, and JavaScript only
             handles canvas rendering.
           </p>
         </div>
       </header>
 
-      <section class="stage" aria-label="Rectangle preview">
+      <section class="stage" aria-label="Cube preview">
         <div class="program-output">
-          <div class="controls" aria-label="Rectangle controls">
+          <div class="controls" aria-label="Cube controls">
+            <label class="angle-control" for="version-select">
+              <span>Version</span>
+              <select id="version-select">
+                <option value="0.3.0" selected>v0.3.0 Shaded cube</option>
+                <option value="0.2.0">v0.2.0 Wire cube</option>
+                <option value="0.1.0">v0.1.0 Rectangle</option>
+              </select>
+            </label>
             <label class="angle-control" for="angle-select">
               <span>Angle</span>
               <select id="angle-select">
-                <option value="45">45 degrees</option>
-                <option value="90" selected>90 degrees</option>
+                <option value="45" selected>45 degrees</option>
+                <option value="90">90 degrees</option>
+              </select>
+            </label>
+            <label class="angle-control" for="axis-select">
+              <span>Axis</span>
+              <select id="axis-select">
+                <option value="xyz" selected>Whole cube</option>
+                <option value="y">Y axis</option>
+                <option value="x">X axis</option>
+                <option value="z">Z axis</option>
               </select>
             </label>
             <button id="rotate-button" type="button">Rotate</button>
@@ -150,14 +168,55 @@
         </div>
       </section>
 
+      <section class="portfolio-section version-section" id="versions">
+        <div class="section-heading">
+          <p class="eyebrow">Version history</p>
+          <h2 id="version-title">v0.3.0 Shaded cube</h2>
+          <p id="version-summary">
+            Filled cube faces, visible axis guides, and whole-cube rotation make
+            the 3D motion easier to read.
+          </p>
+        </div>
+
+        <div class="changelog" aria-label="Changelog">
+          <article class="changelog-entry is-active" data-version="0.3.0">
+            <span class="card-kicker">v0.3.0</span>
+            <h3>Shaded cube</h3>
+            <p>
+              Adds Rust-owned face vertices, colored face rendering, axis
+              guides, and whole-cube rotation.
+            </p>
+          </article>
+
+          <article class="changelog-entry" data-version="0.2.0">
+            <span class="card-kicker">v0.2.0</span>
+            <h3>Wire cube</h3>
+            <p>
+              Replaces the flat rectangle outline with 12 cube edge pairs and a
+              projected 3D view.
+            </p>
+          </article>
+
+          <article class="changelog-entry" data-version="0.1.0">
+            <span class="card-kicker">v0.1.0</span>
+            <h3>Rectangle rotation</h3>
+            <p>
+              Starts with the original Rust vertex buffer, WASM pointer reads,
+              and clockwise Z-axis rotation.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <section class="portfolio-section" id="logic">
         <div class="section-heading">
           <p class="eyebrow">Project logic</p>
           <h2>One source of truth, rendered through WASM</h2>
           <p>
-            The rectangle starts as a single Rust vertex array. The browser reads
-            those vertices from WebAssembly memory, draws them to canvas, and
-            requests transforms through exported Rust functions.
+            The cube starts as a single Rust vertex array made from explicit
+            edge pairs. The browser reads those vertices from WebAssembly
+            memory, projects them to canvas, and requests transforms through
+            exported Rust functions.
           </p>
         </div>
 
@@ -166,9 +225,8 @@
             <span class="card-kicker">Geometry</span>
             <h3>Rust owns the math</h3>
             <p>
-              Rotation happens in `rotate_z`, using the rectangle center as the
-              pivot. Positive degrees rotate clockwise so the browser controls
-              match what the user sees.
+              Rotation happens in Rust through X, Y, Z, and whole-cube
+              transforms using the cube center as the pivot.
             </p>
           </article>
 
@@ -186,8 +244,9 @@
             <span class="card-kicker">Rendering</span>
             <h3>Canvas is a view layer</h3>
             <p>
-              The canvas maps world coordinates to pixels, marks the original
-              top edge, and prints the current vertex buffer for inspection.
+              The canvas projects 3D world coordinates to pixels, marks the
+              original top edge, and prints the current vertex buffer for
+              inspection.
             </p>
           </article>
         </div>
@@ -206,16 +265,17 @@
         <ol class="flow-list">
           <li>
             <strong>Select an angle.</strong>
-            The UI passes either `45` or `90` into the WASM export.
+            The UI passes either `45` or `90` into the selected version's
+            runtime.
           </li>
           <li>
             <strong>Rotate in Rust.</strong>
-            Rust iterates over the current vertex buffer and calls `rotate_z`
-            for each `[x, y, z]` position.
+            Rust iterates over the current edge and face buffers, then applies
+            the selected X, Y, Z, or whole-cube transform.
           </li>
           <li>
             <strong>Read the updated buffer.</strong>
-            JavaScript reads the same WASM memory as a `Float32Array`.
+            JavaScript reads the same WASM memory as `Float32Array` views.
           </li>
           <li>
             <strong>Redraw the canvas.</strong>
@@ -235,7 +295,7 @@
           <article class="info-card">
             <h3>Rust tests</h3>
             <p>
-              Unit and integration tests verify bounds, closed geometry,
+              Unit and integration tests verify bounds, cube edge geometry,
               clockwise rotation, center stability, and repeated rotations.
             </p>
           </article>

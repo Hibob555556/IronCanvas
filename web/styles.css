@@ -397,6 +397,12 @@ pre {
   gap: 14px;
 }
 
+.changelog {
+  position: relative;
+  display: grid;
+  gap: 14px;
+}
+
 .info-card {
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -424,6 +430,32 @@ pre {
 
 .info-card p {
   margin: 0;
+}
+
+.changelog-entry {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.changelog-entry.is-active {
+  border-color: rgba(124, 240, 207, 0.42);
+  background:
+    linear-gradient(135deg, rgba(124, 240, 207, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.05);
+}
+
+.changelog-entry h3 {
+  margin: 0 0 10px;
+  font-family: "Space Grotesk", Manrope, sans-serif;
+  font-size: 1.15rem;
+}
+
+.changelog-entry p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .split-section {
@@ -562,6 +594,10 @@ pre {
   }
 
   .card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .changelog {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
