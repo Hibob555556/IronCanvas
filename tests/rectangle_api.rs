@@ -1,6 +1,6 @@
 use iron_canvas::{
-    CENTER, Vertex, cube_face_vertex_count, rectangle_vertices, rotate_rectangle_x,
-    rotate_rectangle_y, rotate_rectangle_z, rotate_x, rotate_y, rotate_z,
+    CENTER, Vertex, camera_position, cube_face_vertex_count, rectangle_vertices,
+    rotate_rectangle_x, rotate_rectangle_y, rotate_rectangle_z, rotate_x, rotate_y, rotate_z,
 };
 
 fn assert_close(actual: f32, expected: f32) {
@@ -71,8 +71,8 @@ fn rotate_y_mutates_width_and_depth_for_cube_turns() {
 
     rotate_rectangle_y(vertices.as_mut_ptr(), vertices.len(), 90.0);
 
-    assert_vertex_close(vertices[0], [2.0, 0.0, 0.0]);
-    assert_vertex_close(vertices[3], [2.0, 2.0, 2.0]);
+    assert_vertex_close(vertices[0], [0.0, 0.0, 2.0]);
+    assert_vertex_close(vertices[3], [0.0, 2.0, 0.0]);
 }
 
 #[test]
@@ -116,4 +116,22 @@ fn rotate_y_preserves_distance_from_center() {
     let rotated_distance = (rotated[0] - CENTER[0]).hypot(rotated[2] - CENTER[2]);
 
     assert_close(rotated_distance, original_distance);
+}
+
+#[test]
+fn camera_position_keeps_vertex_distance_stable() {
+    let position = [0.0, 0.0, 0.0];
+    let camera = camera_position(position, CENTER, 1.0, 0.5);
+    let original_distance = distance_from_center(position);
+    let camera_distance = distance_from_center(camera);
+
+    assert_close(camera_distance, original_distance);
+}
+
+fn distance_from_center(position: [f32; 3]) -> f32 {
+    let x = position[0] - CENTER[0];
+    let y = position[1] - CENTER[1];
+    let z = position[2] - CENTER[2];
+
+    (x * x + y * y + z * z).sqrt()
 }

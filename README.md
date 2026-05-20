@@ -1,31 +1,31 @@
 # Iron Canvas
 
-Current demo version: `v0.3.2`
+Current demo version: `v0.4.0`
 
 [![CI](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml)
 [![Deploy Web Demo](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml)
 
-Iron Canvas is a small Rust-to-WebAssembly geometry demo that renders versioned geometry in the browser. It began as a flat rectangle rotation demo and now includes a wireframe cube, shaded cube faces, axis guides, and a changelog-backed version switcher.
+Iron Canvas is a small Rust-to-WebAssembly geometry demo that renders versioned geometry in the browser. It began as a flat rectangle rotation demo and now includes a wireframe cube, shaded cube faces, an orbit camera, lighting, and a changelog-backed version switcher.
 
-The project stays intentionally compact, but it is built like a real frontend systems project: Rust owns the live geometry buffers and transforms, WebAssembly exposes a narrow runtime API, and JavaScript handles browser rendering, controls, and version presentation.
+The project stays intentionally compact, but it is built like a real frontend systems project: Rust owns the live geometry buffers, transforms, camera-space vertices, and face shading; WebAssembly exposes a narrow runtime API; and JavaScript handles browser controls, canvas drawing, and version presentation.
 
 Repository: [github.com/Hibob555556/IronCanvas](https://github.com/Hibob555556/IronCanvas)
 
 ## Highlights
 
 - Rust geometry engine compiled to WebAssembly
-- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, and `v0.3.2` shaded cube
+- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, `v0.3.2` shaded cube, and `v0.4.0` orbit cube
 - Canvas UI with version, angle, axis, rotate, and reset controls
 - Cube edge vertices plus Rust-owned face vertices for shaded rendering
 - X, Y, and Z rotation options
-- Axis guide overlays that show the selected rotation axis
-- JavaScript avoids trig-based rotation in the primary WASM path
+- Axis guide overlays for legacy cube views and drag-to-orbit controls for `v0.4.0`
+- Rust owns rotation, orbit camera vertex transforms, lighting, shading, and solid face colors in the primary WASM path
 - Rust unit tests, Rust integration tests, web static tests, and WASM runtime tests
 - GitHub Actions CI and GitHub Pages deployment workflow
 
 ## Demo Behavior
 
-The latest version starts with a cube represented as 12 explicit edge pairs and six quad faces. The browser reads the edge and face buffers from WASM memory, projects the 3D coordinates onto a canvas, draws translucent faces, overlays the wireframe, and prints the current vertex coordinates beside it.
+The latest version starts with a cube represented as 12 explicit edge pairs and six quad faces. The browser reads Rust-owned edge, face, camera, and face-color buffers from WASM memory, draws solid lit faces, and prints the current camera-space vertex coordinates beside it.
 
 When the user selects an angle and axis, then clicks `Rotate`, JavaScript calls the matching Rust/WASM export:
 
@@ -35,14 +35,15 @@ wasmExports.rotate_current_cube_y(degrees);
 wasmExports.rotate_current_rectangle_z(degrees);
 ```
 
-The `rectangle_*` names remain for compatibility with the original demo, but the current default geometry is a cube. Rust mutates the runtime buffers, JavaScript reads the updated WASM memory, and the canvas redraws. The `TOP` label and colored axis guides make orientation easier to track after each rotation.
+The `rectangle_*` names remain for compatibility with the original demo, but the current default geometry is a cube. Rust mutates the runtime buffers, JavaScript reads the updated WASM memory, and the canvas redraws. Older cube versions keep the `TOP` label and colored axis guides; `v0.4.0` uses solid walls, Rust-owned lighting, and drag-to-orbit inspection.
 
-If `web/iron_canvas.wasm` is missing during local development, the page falls back to a browser-side runtime so the demo can still be inspected. Rebuilding the WASM file restores the Rust-backed path.
+If `web/iron_canvas.wasm` is missing during local development, the page falls back to a browser-side runtime for the older geometry demos. Rebuilding the WASM file restores the full Rust-backed `v0.4.0` camera and shading path.
 
 ## Versions
 
 | Version | Demo | Notes |
 | --- | --- | --- |
+| `v0.4.0` | Orbit cube | Adds solid lit faces and Rust-owned camera vertex transforms for drag-to-orbit inspection. |
 | `v0.3.2` | Shaded cube | Improves 45-degree readability with a steadier canvas camera and camera-depth face ordering. |
 | `v0.3.1` | Shaded cube | Removes the whole-cube shortcut, keeps explicit X/Y/Z rotation, and stabilizes rotation framing. |
 | `v0.3.0` | Shaded cube | Adds Rust-owned face vertices, translucent face rendering, selected-axis guides, and X/Y/Z rotation controls. |
@@ -79,7 +80,12 @@ rectangle_vertices_ptr()
 current_rectangle_vertices_ptr()
 cube_face_vertex_count()
 current_cube_face_vertices_ptr()
+current_cube_camera_vertices_ptr()
+current_cube_camera_face_vertices_ptr()
+cube_face_color_count()
+current_cube_face_colors_ptr()
 reset_current_rectangle()
+set_current_cube_camera(yaw, pitch)
 rotate_current_rectangle_z(degrees)
 rotate_current_rectangle_90_clockwise()
 rotate_current_cube_x(degrees)
@@ -165,10 +171,11 @@ cargo build --target wasm32-unknown-unknown --release --lib
 
 The test suite checks the project at several layers:
 
-- Rust unit tests validate rotation behavior, center stability, and zero clamping.
-- Rust integration tests validate the compatibility API, cube bounds, face counts, axis rotation, and repeated rotations.
-- Web static tests validate the HTML/JS contract, version controls, changelog content, and WASM delegation hooks.
-- WASM runtime tests instantiate the compiled module, inspect exports, reset vertices, rotate vertices, and verify negative zero does not leak into output.
+- Rust unit tests validate rotation behavior, center stability, camera transforms, face color buffers, and zero clamping.
+- Rust integration tests validate the compatibility API, cube bounds, face counts, axis rotation, camera distance stability, and repeated rotations.
+- Web static tests validate the HTML/JS contract, version controls, changelog content, orbit helper usage, and WASM delegation hooks.
+- Web behavior tests validate orbit drag direction, pitch clamping, and view-aware rotation signs.
+- WASM runtime tests instantiate the compiled module, inspect exports, reset vertices, rotate vertices, validate camera-owned vertex/color buffers, and verify negative zero does not leak into output.
 
 The local Husky pre-commit hook runs:
 

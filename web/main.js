@@ -1,3 +1,8 @@
+import {
+  nextOrbitCamera,
+  rotationDegreesForView,
+} from "./orbit-controls.mjs";
+
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const versionSelect = document.querySelector("#version-select");
@@ -18,6 +23,11 @@ let wasmExports = null;
 let loadedWasmExports = null;
 let viewBounds = null;
 let activeVersion = null;
+let orbitCamera = {
+  yaw: -0.72,
+  pitch: -0.34,
+};
+let dragState = null;
 
 const rectangleVertices = [
   [0.0, 0.0, 0.0],
@@ -95,6 +105,7 @@ const faceColors = [
   "rgba(180, 255, 205, 0.22)",
   "rgba(214, 172, 255, 0.2)",
 ];
+const fallbackSolidFaceColor = "rgb(154, 163, 173)";
 const axisGuides = {
   x: {
     label: "X",
@@ -117,6 +128,20 @@ const axisGuides = {
 };
 
 const versions = {
+  "0.4.0": {
+    title: "v0.4.0 Orbit cube",
+    summary:
+      "Solid cube faces and a drag camera make the cube inspectable from every angle.",
+    vertices: fallbackVertices,
+    faces: fallbackFaces,
+    center: [1.0, 1.0, 1.0],
+    projection: "orbit",
+    edgeMode: "pairs",
+    axes: true,
+    solidFaces: true,
+    orbit: true,
+    topLabel: null,
+  },
   "0.3.2": {
     title: "v0.3.2 Shaded cube",
     summary:
@@ -207,8 +232,8 @@ function createFallbackRuntime(loadError, version = versions["0.3.2"]) {
       }
 
       if (axis === "y") {
-        target[index] = center[0] + x * c + z * s;
-        target[index + 2] = center[2] - x * s + z * c;
+        target[index] = center[0] + x * c - z * s;
+        target[index + 2] = center[2] + x * s + z * c;
       }
 
       if (axis === "z") {
@@ -273,6 +298,18 @@ function verticesFromWasm(exports, ptr) {
   return vertices;
 }
 
+function vertexBufferFromWasm(exports, ptr, count) {
+  const floats = new Float32Array(exports.memory.buffer, ptr, count * 3);
+  const vertices = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    vertices.push([floats[offset], floats[offset + 1], floats[offset + 2]]);
+  }
+
+  return vertices;
+}
+
 function currentVerticesFromRust() {
   const ptr = wasmExports.current_rectangle_vertices_ptr();
   return verticesFromWasm(wasmExports, ptr);
@@ -305,10 +342,66 @@ function currentFacesFromRust() {
   return faces;
 }
 
+function currentCameraVerticesFromRust() {
+  if (typeof wasmExports.current_cube_camera_vertices_ptr !== "function") {
+    return currentVertices;
+  }
+
+  const ptr = wasmExports.current_cube_camera_vertices_ptr();
+  return vertexBufferFromWasm(wasmExports, ptr, wasmExports.rectangle_vertex_count());
+}
+
+function currentCameraFacesFromRust() {
+  if (
+    typeof wasmExports.current_cube_camera_face_vertices_ptr !== "function" ||
+    typeof wasmExports.cube_face_vertex_count !== "function"
+  ) {
+    return currentFaces;
+  }
+
+  const count = wasmExports.cube_face_vertex_count();
+  const ptr = wasmExports.current_cube_camera_face_vertices_ptr();
+  const vertices = vertexBufferFromWasm(wasmExports, ptr, count);
+  const faces = [];
+
+  for (let index = 0; index < vertices.length; index += 4) {
+    faces.push(vertices.slice(index, index + 4));
+  }
+
+  return faces;
+}
+
+function currentFaceColorsFromRust() {
+  if (
+    typeof wasmExports.cube_face_color_count !== "function" ||
+    typeof wasmExports.current_cube_face_colors_ptr !== "function"
+  ) {
+    return [];
+  }
+
+  const count = wasmExports.cube_face_color_count();
+  const ptr = wasmExports.current_cube_face_colors_ptr();
+  const floats = new Float32Array(wasmExports.memory.buffer, ptr, count * 3);
+  const colors = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    colors.push(
+      `rgb(${Math.round(floats[offset])}, ${Math.round(floats[offset + 1])}, ${Math.round(floats[offset + 2])})`,
+    );
+  }
+
+  return colors;
+}
+
 function projectVertex(vertex) {
   const [x, y, z] = vertex;
 
   if (activeVersion.projection === "flat") {
+    return [x, y];
+  }
+
+  if (activeVersion.projection === "orbit") {
     return [x, y];
   }
 
@@ -323,6 +416,10 @@ function projectVertex(vertex) {
 }
 
 function cameraDepth(vertex) {
+  if (activeVersion.projection === "orbit") {
+    return vertex[2];
+  }
+
   const [x, y, z] = vertex;
   const centeredX = x - activeVersion.center[0];
   const centeredY = y - activeVersion.center[1];
@@ -352,6 +449,17 @@ function createViewBounds(vertices, faces = []) {
     maxX: centerX + span / 2,
     minY: centerY - span / 2,
     maxY: centerY + span / 2,
+  };
+}
+
+function createOrbitViewBounds() {
+  const radius = 2.05;
+
+  return {
+    minX: activeVersion.center[0] - radius,
+    maxX: activeVersion.center[0] + radius,
+    minY: activeVersion.center[1] - radius,
+    maxY: activeVersion.center[1] + radius,
   };
 }
 
@@ -397,7 +505,7 @@ function drawGrid() {
   }
 }
 
-function drawFaces(faces, project) {
+function drawFaces(faces, project, solidColors = []) {
   faces
     .map((face, index) => ({
       face,
@@ -419,16 +527,20 @@ function drawFaces(faces, project) {
       });
 
       ctx.closePath();
-      ctx.fillStyle = faceColors[index % faceColors.length];
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
-      ctx.lineWidth = 1;
+      ctx.fillStyle = activeVersion.solidFaces
+        ? solidColors[index] ?? fallbackSolidFaceColor
+        : faceColors[index % faceColors.length];
+      ctx.strokeStyle = activeVersion.solidFaces
+        ? "rgba(12, 17, 23, 0.72)"
+        : "rgba(255, 255, 255, 0.16)";
+      ctx.lineWidth = activeVersion.solidFaces ? 2 : 1;
       ctx.fill();
       ctx.stroke();
     });
 }
 
 function drawAxisGuides(project) {
-  if (!activeVersion?.axes) {
+  if (!activeVersion?.axes || activeVersion?.orbit) {
     return;
   }
 
@@ -462,50 +574,59 @@ function drawAxisGuides(project) {
   });
 }
 
-function drawVertices(vertices, faces) {
+function drawVertices(vertices, faces, solidColors = []) {
   const project = fitToCanvas();
 
   drawGrid();
-  drawFaces(faces, project);
+  drawFaces(faces, project, solidColors);
   drawAxisGuides(project);
 
-  ctx.strokeStyle = "#7cf0cf";
-  ctx.lineWidth = 4;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-  ctx.beginPath();
+  if (!activeVersion.solidFaces) {
+    ctx.strokeStyle = "#7cf0cf";
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
 
-  if (activeVersion?.edgeMode === "path") {
-    vertices.forEach((vertex, index) => {
-      const [x, y] = project(vertex);
+    if (activeVersion?.edgeMode === "path") {
+      vertices.forEach((vertex, index) => {
+        const [x, y] = project(vertex);
 
-      if (index === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+    } else {
+      for (let index = 0; index < vertices.length; index += 2) {
+        const [startX, startY] = project(vertices[index]);
+        const [endX, endY] = project(vertices[index + 1]);
+
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
       }
-    });
-  } else {
-    for (let index = 0; index < vertices.length; index += 2) {
-      const [startX, startY] = project(vertices[index]);
-      const [endX, endY] = project(vertices[index + 1]);
-
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(endX, endY);
     }
+
+    ctx.stroke();
   }
 
-  ctx.stroke();
-
-  vertices.forEach((vertex, index) => {
-    const [x, y] = project(vertex);
-    ctx.fillStyle = "#f3f7ff";
-    ctx.beginPath();
-    ctx.arc(x, y, 6, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  if (!activeVersion.solidFaces) {
+    vertices.forEach((vertex) => {
+      const [x, y] = project(vertex);
+      ctx.fillStyle = "#f3f7ff";
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
 
   const label = activeVersion?.topLabel;
+
+  if (!label) {
+    return;
+  }
+
   const [startX, startY] = project(vertices[label.start]);
   const [endX, endY] = project(vertices[label.end]);
   const labelX = (startX + endX) / 2;
@@ -530,9 +651,62 @@ function formatVertices(vertices) {
     .join("\n");
 }
 
+function updateOrbitFromPointer(event) {
+  if (!dragState || !activeVersion?.orbit) {
+    return;
+  }
+
+  const deltaX = event.clientX - dragState.x;
+  const deltaY = event.clientY - dragState.y;
+  orbitCamera = nextOrbitCamera(orbitCamera, deltaX, deltaY);
+  dragState.x = event.clientX;
+  dragState.y = event.clientY;
+  render();
+}
+
+function startOrbitDrag(event) {
+  if (!activeVersion?.orbit) {
+    return;
+  }
+
+  dragState = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+  };
+  canvas.setPointerCapture(event.pointerId);
+  canvas.classList.add("is-dragging");
+}
+
+function stopOrbitDrag(event) {
+  if (!dragState || dragState.pointerId !== event.pointerId) {
+    return;
+  }
+
+  dragState = null;
+  canvas.classList.remove("is-dragging");
+}
+
+function syncOrbitAvailability() {
+  canvas.classList.toggle("can-orbit", Boolean(activeVersion?.orbit));
+}
+
 function render() {
-  drawVertices(currentVertices, currentFaces);
-  verticesOutput.textContent = formatVertices(currentVertices);
+  let renderVertices = currentVertices;
+  let renderFaces = currentFaces;
+  let renderFaceColors = [];
+
+  if (activeVersion?.orbit) {
+    if (typeof wasmExports.set_current_cube_camera === "function") {
+      wasmExports.set_current_cube_camera(orbitCamera.yaw, orbitCamera.pitch);
+      renderVertices = currentCameraVerticesFromRust();
+      renderFaces = currentCameraFacesFromRust();
+      renderFaceColors = currentFaceColorsFromRust();
+    }
+  }
+
+  drawVertices(renderVertices, renderFaces, renderFaceColors);
+  verticesOutput.textContent = formatVertices(renderVertices);
   rotationLabel.textContent = `${activeVersion.title} | ${rotation} degrees | ${axisSelect.selectedOptions[0].textContent}`;
 }
 
@@ -577,7 +751,9 @@ function resetCurrentDemo() {
   wasmExports.reset_current_rectangle();
   currentVertices = currentVerticesFromRust();
   currentFaces = currentFacesFromRust();
-  viewBounds = createViewBounds(currentVertices, currentFaces);
+  viewBounds = activeVersion?.orbit
+    ? createOrbitViewBounds()
+    : createViewBounds(currentVertices, currentFaces);
   rotation = 0;
   render();
 }
@@ -586,7 +762,7 @@ function selectVersion(versionKey) {
   activeVersion = versions[versionKey];
   const wasAxisDisabled = axisSelect.disabled;
 
-  if (versionKey === "0.3.2" && loadedWasmExports) {
+  if ((versionKey === "0.4.0" || versionKey === "0.3.2") && loadedWasmExports) {
     wasmExports = loadedWasmExports;
   } else {
     wasmExports = createFallbackRuntime(null, activeVersion);
@@ -601,21 +777,29 @@ function selectVersion(versionKey) {
   }
 
   syncChangelog(versionKey);
+  syncOrbitAvailability();
   resetCurrentDemo();
 }
 
 function rotateCurrentDemo(degrees, axis) {
+  const displayDegrees = rotationDegreesForView(
+    degrees,
+    axis,
+    Boolean(activeVersion?.orbit),
+    orbitCamera,
+  );
+
   if (axis === "x" && typeof wasmExports.rotate_current_cube_x === "function") {
-    wasmExports.rotate_current_cube_x(degrees);
+    wasmExports.rotate_current_cube_x(displayDegrees);
   } else if (axis === "y" && typeof wasmExports.rotate_current_cube_y === "function") {
-    wasmExports.rotate_current_cube_y(degrees);
+    wasmExports.rotate_current_cube_y(displayDegrees);
   } else {
-    wasmExports.rotate_current_rectangle_z(degrees);
+    wasmExports.rotate_current_rectangle_z(displayDegrees);
   }
 
   currentVertices = currentVerticesFromRust();
   currentFaces = currentFacesFromRust();
-  rotation = (rotation + degrees) % 360;
+  rotation = (rotation + displayDegrees) % 360;
   render();
 }
 
@@ -634,6 +818,11 @@ versionSelect.addEventListener("change", () => {
 axisSelect.addEventListener("change", () => {
   render();
 });
+
+canvas.addEventListener("pointerdown", startOrbitDrag);
+canvas.addEventListener("pointermove", updateOrbitFromPointer);
+canvas.addEventListener("pointerup", stopOrbitDrag);
+canvas.addEventListener("pointercancel", stopOrbitDrag);
 
 try {
   loadedWasmExports = await loadWasm();

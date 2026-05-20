@@ -29,6 +29,7 @@ test("index.html presents the demo as a portfolio case study", async () => {
   assert.match(html, /class="site-nav"/);
   assert.match(html, /Project logic/);
   assert.match(html, /Version history/);
+  assert.match(html, /v0\.4\.0 Orbit cube/);
   assert.match(html, /v0\.3\.2 Shaded cube/);
   assert.match(html, /v0\.3\.1/);
   assert.match(html, /v0\.3\.0/);
@@ -64,8 +65,11 @@ test("main.js delegates rotation to Rust instead of doing trig itself", async ()
   assert.doesNotMatch(js, /rotate_current_cube_xyz/);
   assert.match(js, /versionSelect/);
   assert.match(js, /versions/);
+  assert.match(js, /0\.4\.0/);
   assert.match(js, /0\.1\.0/);
-  assert.doesNotMatch(js, /Math\.(sin|cos|tan)/);
+
+  const rotateBody = js.match(/function rotateCurrentDemo\([^]*?\n}/)?.[0] ?? "";
+  assert.doesNotMatch(rotateBody, /Math\.(sin|cos|tan)/);
 });
 
 test("main.js keeps the camera stable while rotating", async () => {
@@ -84,5 +88,26 @@ test("main.js keeps the rectangle demo on a flat camera", async () => {
 
   assert.match(js, /projection: "flat"/);
   assert.match(js, /projection: "dimetric"/);
+  assert.match(js, /projection: "orbit"/);
   assert.match(js, /if \(activeVersion\.projection === "flat"\) {\s*return \[x, y\];\s*}/);
+});
+
+test("main.js supports drag orbit controls for v4", async () => {
+  const js = await readFile(new URL("./main.js", import.meta.url), "utf8");
+
+  assert.match(js, /function startOrbitDrag/);
+  assert.match(js, /function updateOrbitFromPointer/);
+  assert.match(js, /canvas\.addEventListener\("pointerdown", startOrbitDrag\)/);
+  assert.match(js, /set_current_cube_camera/);
+  assert.match(js, /current_cube_camera_vertices_ptr/);
+  assert.match(js, /verticesOutput\.textContent = formatVertices\(renderVertices\)/);
+  assert.match(js, /solidFaces: true/);
+  assert.match(js, /current_cube_face_colors_ptr/);
+  assert.match(js, /cube_face_color_count/);
+  assert.doesNotMatch(js, /function litFaceColor/);
+  assert.doesNotMatch(js, /orbitLight/);
+  assert.match(js, /from "\.\/orbit-controls\.mjs"/);
+  assert.match(js, /nextOrbitCamera/);
+  assert.match(js, /rotationDegreesForView/);
+  assert.doesNotMatch(js, /function orbitTransform/);
 });

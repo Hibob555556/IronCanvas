@@ -328,6 +328,15 @@ canvas {
     0 18px 40px rgba(0, 0, 0, 0.24);
 }
 
+canvas.can-orbit {
+  cursor: grab;
+  touch-action: none;
+}
+
+canvas.can-orbit.is-dragging {
+  cursor: grabbing;
+}
+
 .output {
   padding: 14px;
   border-radius: var(--radius-lg);
