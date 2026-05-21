@@ -1,6 +1,6 @@
 # Iron Canvas
 
-Current demo version: `v0.4.0`
+Current demo version: `v0.4.1`
 
 [![CI](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/ci.yml)
 [![Deploy Web Demo](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml/badge.svg)](https://github.com/Hibob555556/IronCanvas/actions/workflows/pages.yml)
@@ -14,18 +14,18 @@ Repository: [github.com/Hibob555556/IronCanvas](https://github.com/Hibob555556/I
 ## Highlights
 
 - Rust geometry engine compiled to WebAssembly
-- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, `v0.3.2` shaded cube, and `v0.4.0` orbit cube
-- Canvas UI with version, angle, axis, rotate, and reset controls
+- Version switcher for `v0.1.0` rectangle, `v0.2.0` wire cube, `v0.3.2` shaded cube, and `v0.4.1` orbit cube
+- Canvas UI with version, angle, axis, vertex visibility, rotate, and reset controls
 - Cube edge vertices plus Rust-owned face vertices for shaded rendering
 - X, Y, and Z rotation options
-- Axis guide overlays for legacy cube views and drag-to-orbit controls for `v0.4.0`
+- Axis guide overlays for legacy cube views and drag-to-orbit controls for `v0.4.1`
 - Rust owns rotation, orbit camera vertex transforms, lighting, shading, and solid face colors in the primary WASM path
 - Rust unit tests, Rust integration tests, web static tests, and WASM runtime tests
 - GitHub Actions CI and GitHub Pages deployment workflow
 
 ## Demo Behavior
 
-The latest version starts with a cube represented as 12 explicit edge pairs and six quad faces. The browser reads Rust-owned edge, face, camera, and face-color buffers from WASM memory, draws solid lit faces, and prints the current camera-space vertex coordinates beside it.
+The latest version starts with a cube represented as 12 explicit edge pairs and six quad faces. The browser reads Rust-owned edge, face, camera, and face-color buffers from WASM memory, draws solid lit faces, and prints the current camera-space vertex coordinates beside it. A vertex visibility toggle can switch the coordinate readout between the full vertex buffer and vertices that are not hidden behind nearer faces or overlapping vertices.
 
 When the user selects an angle and axis, then clicks `Rotate`, JavaScript calls the matching Rust/WASM export:
 
@@ -35,14 +35,15 @@ wasmExports.rotate_current_cube_y(degrees);
 wasmExports.rotate_current_rectangle_z(degrees);
 ```
 
-The `rectangle_*` names remain for compatibility with the original demo, but the current default geometry is a cube. Rust mutates the runtime buffers, JavaScript reads the updated WASM memory, and the canvas redraws. Older cube versions keep the `TOP` label and colored axis guides; `v0.4.0` uses solid walls, Rust-owned lighting, and drag-to-orbit inspection.
+The `rectangle_*` names remain for compatibility with the original demo, but the current default geometry is a cube. Rust mutates the runtime buffers, JavaScript reads the updated WASM memory, and the canvas redraws. Older cube versions keep the `TOP` label and colored axis guides; `v0.4.1` uses solid walls, Rust-owned lighting, drag-to-orbit inspection, and a toggleable hidden-vertex readout.
 
-If `web/iron_canvas.wasm` is missing during local development, the page falls back to a browser-side runtime for the older geometry demos. Rebuilding the WASM file restores the full Rust-backed `v0.4.0` camera and shading path.
+If `web/iron_canvas.wasm` is missing during local development, the page falls back to a browser-side runtime for the older geometry demos. Rebuilding the WASM file restores the full Rust-backed `v0.4.1` camera and shading path.
 
 ## Versions
 
 | Version | Demo | Notes |
 | --- | --- | --- |
+| `v0.4.1` | Orbit cube | Adds a hidden-vertex toggle for switching the coordinate readout between visible vertices and the full vertex buffer. |
 | `v0.4.0` | Orbit cube | Adds solid lit faces and Rust-owned camera vertex transforms for drag-to-orbit inspection. |
 | `v0.3.2` | Shaded cube | Improves 45-degree readability with a steadier canvas camera and camera-depth face ordering. |
 | `v0.3.1` | Shaded cube | Removes the whole-cube shortcut, keeps explicit X/Y/Z rotation, and stabilizes rotation framing. |

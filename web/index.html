@@ -129,7 +129,7 @@
             <label class="angle-control" for="version-select">
               <span>Version</span>
               <select id="version-select">
-                <option value="0.4.0" selected>v0.4.0 Orbit cube</option>
+                <option value="0.4.1" selected>v0.4.1 Orbit cube</option>
                 <option value="0.3.2">v0.3.2 Shaded cube</option>
                 <option value="0.2.0">v0.2.0 Wire cube</option>
                 <option value="0.1.0">v0.1.0 Rectangle</option>
@@ -149,6 +149,10 @@
                 <option value="x">X axis</option>
                 <option value="z">Z axis</option>
               </select>
+            </label>
+            <label class="visibility-control" for="show-hidden-vertices">
+              <input id="show-hidden-vertices" type="checkbox" checked />
+              <span>Show hidden vertices</span>
             </label>
             <button id="rotate-button" type="button">Rotate</button>
             <button id="reset-button" type="button">Reset</button>
@@ -171,15 +175,24 @@
       <section class="portfolio-section version-section" id="versions">
         <div class="section-heading">
           <p class="eyebrow">Version history</p>
-          <h2 id="version-title">v0.4.0 Orbit cube</h2>
+          <h2 id="version-title">v0.4.1 Orbit cube</h2>
           <p id="version-summary">
-            Solid cube faces and a drag camera make the cube inspectable from
-            every angle.
+            Vertex visibility controls make the Rust-owned cube buffer easier
+            to inspect while orbiting.
           </p>
         </div>
 
         <div class="changelog" aria-label="Changelog">
-          <article class="changelog-entry is-active" data-version="0.4.0">
+          <article class="changelog-entry is-active" data-version="0.4.1">
+            <span class="card-kicker">v0.4.1</span>
+            <h3>Orbit cube</h3>
+            <p>
+              Adds a hidden-vertex toggle for switching the coordinate readout
+              between visible vertices and the full vertex buffer.
+            </p>
+          </article>
+
+          <article class="changelog-entry" data-version="0.4.0">
             <span class="card-kicker">v0.4.0</span>
             <h3>Orbit cube</h3>
             <p>

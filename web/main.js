@@ -10,6 +10,7 @@ const angleSelect = document.querySelector("#angle-select");
 const axisSelect = document.querySelector("#axis-select");
 const rotateButton = document.querySelector("#rotate-button");
 const resetButton = document.querySelector("#reset-button");
+const showHiddenVerticesInput = document.querySelector("#show-hidden-vertices");
 const verticesOutput = document.querySelector("#vertices-output");
 const rotationLabel = document.querySelector("#rotation-label");
 const versionTitle = document.querySelector("#version-title");
@@ -128,10 +129,10 @@ const axisGuides = {
 };
 
 const versions = {
-  "0.4.0": {
-    title: "v0.4.0 Orbit cube",
+  "0.4.1": {
+    title: "v0.4.1 Orbit cube",
     summary:
-      "Solid cube faces and a drag camera make the cube inspectable from every angle.",
+      "Vertex visibility controls make the Rust-owned cube buffer easier to inspect while orbiting.",
     vertices: fallbackVertices,
     faces: fallbackFaces,
     center: [1.0, 1.0, 1.0],
@@ -482,6 +483,112 @@ function fitToCanvas() {
   ];
 }
 
+function isPointInCanvas([x, y], margin = 0) {
+  return (
+    x >= -margin &&
+    x <= canvas.width + margin &&
+    y >= -margin &&
+    y <= canvas.height + margin
+  );
+}
+
+function screenBounds(points) {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
+
+function boundsIntersectCanvas(bounds, margin = 0) {
+  return (
+    bounds.maxX >= -margin &&
+    bounds.minX <= canvas.width + margin &&
+    bounds.maxY >= -margin &&
+    bounds.minY <= canvas.height + margin
+  );
+}
+
+function projectedVerticesIntersectCanvas(vertices, project, margin = 0) {
+  return boundsIntersectCanvas(screenBounds(vertices.map(project)), margin);
+}
+
+function nearlySameScreenPoint(a, b, radius = 0.75) {
+  return Math.hypot(a[0] - b[0], a[1] - b[1]) <= radius;
+}
+
+function sign(point, start, end) {
+  return (point[0] - end[0]) * (start[1] - end[1]) - (start[0] - end[0]) * (point[1] - end[1]);
+}
+
+function pointInTriangle(point, a, b, c) {
+  const d1 = sign(point, a, b);
+  const d2 = sign(point, b, c);
+  const d3 = sign(point, c, a);
+  const hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+
+  return !(hasNegative && hasPositive);
+}
+
+function faceContainsProjectedPoint(face, point, project) {
+  const projectedFace = face.map(project);
+
+  return (
+    pointInTriangle(point, projectedFace[0], projectedFace[1], projectedFace[2]) ||
+    pointInTriangle(point, projectedFace[0], projectedFace[2], projectedFace[3])
+  );
+}
+
+function faceDepth(face) {
+  return face.reduce((total, vertex) => total + cameraDepth(vertex), 0) / face.length;
+}
+
+function isDepthInFront(a, b, margin = 0.02) {
+  return a > b + margin;
+}
+
+function isVertexOccluded(vertex, vertexIndex, vertices, faces, project) {
+  const point = project(vertex);
+  const depth = cameraDepth(vertex);
+
+  const hiddenBehindFace = faces.some((face) => {
+    if (face.some((faceVertex) => nearlySameScreenPoint(project(faceVertex), point))) {
+      return false;
+    }
+
+    return isDepthInFront(faceDepth(face), depth) && faceContainsProjectedPoint(face, point, project);
+  });
+
+  if (hiddenBehindFace) {
+    return true;
+  }
+
+  return vertices.some((otherVertex, otherIndex) => {
+    if (otherIndex === vertexIndex || !isDepthInFront(cameraDepth(otherVertex), depth)) {
+      return false;
+    }
+
+    return nearlySameScreenPoint(project(otherVertex), point);
+  });
+}
+
+function isDuplicateVisibleVertex(vertex, index, visibleEntries, project) {
+  const point = project(vertex);
+  const depth = cameraDepth(vertex);
+
+  return visibleEntries.some(
+    (entry) =>
+      nearlySameScreenPoint(project(entry.vertex), point) &&
+      Math.abs(cameraDepth(entry.vertex) - depth) <= 0.02 &&
+      entry.index < index,
+  );
+}
+
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#07111f";
@@ -510,8 +617,9 @@ function drawFaces(faces, project, solidColors = []) {
     .map((face, index) => ({
       face,
       index,
-      depth: face.reduce((total, vertex) => total + cameraDepth(vertex), 0) / face.length,
+      depth: faceDepth(face),
     }))
+    .filter(({ face }) => projectedVerticesIntersectCanvas(face, project, 2))
     .sort((a, b) => a.depth - b.depth)
     .forEach(({ face, index }) => {
       ctx.beginPath();
@@ -589,17 +697,28 @@ function drawVertices(vertices, faces, solidColors = []) {
     ctx.beginPath();
 
     if (activeVersion?.edgeMode === "path") {
-      vertices.forEach((vertex, index) => {
-        const [x, y] = project(vertex);
+      const projected = vertices.map(project);
+      let hasVisiblePathPoint = false;
 
-        if (index === 0) {
+      projected.forEach(([x, y], index) => {
+        if (!isPointInCanvas([x, y], 8)) {
+          hasVisiblePathPoint = false;
+          return;
+        }
+
+        if (!hasVisiblePathPoint) {
           ctx.moveTo(x, y);
+          hasVisiblePathPoint = true;
         } else {
           ctx.lineTo(x, y);
         }
       });
     } else {
       for (let index = 0; index < vertices.length; index += 2) {
+        if (!projectedVerticesIntersectCanvas([vertices[index], vertices[index + 1]], project, 8)) {
+          continue;
+        }
+
         const [startX, startY] = project(vertices[index]);
         const [endX, endY] = project(vertices[index + 1]);
 
@@ -614,6 +733,11 @@ function drawVertices(vertices, faces, solidColors = []) {
   if (!activeVersion.solidFaces) {
     vertices.forEach((vertex) => {
       const [x, y] = project(vertex);
+
+      if (!isPointInCanvas([x, y], 8)) {
+        return;
+      }
+
       ctx.fillStyle = "#f3f7ff";
       ctx.beginPath();
       ctx.arc(x, y, 6, 0, Math.PI * 2);
@@ -629,6 +753,17 @@ function drawVertices(vertices, faces, solidColors = []) {
 
   const [startX, startY] = project(vertices[label.start]);
   const [endX, endY] = project(vertices[label.end]);
+
+  if (
+    !projectedVerticesIntersectCanvas(
+      [vertices[label.start], vertices[label.end]],
+      project,
+      24,
+    )
+  ) {
+    return;
+  }
+
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
@@ -639,9 +774,32 @@ function drawVertices(vertices, faces, solidColors = []) {
   ctx.fillText(label.text, labelX, labelY - 18);
 }
 
-function formatVertices(vertices) {
-  return vertices
-    .map((vertex, index) => {
+function vertexEntries(vertices) {
+  return vertices.map((vertex, index) => ({ vertex, index }));
+}
+
+function visibleVertexEntries(vertices, faces) {
+  const project = fitToCanvas();
+  const visibleEntries = [];
+
+  vertices.forEach((vertex, index) => {
+    if (
+      !isPointInCanvas(project(vertex), 8) ||
+      isVertexOccluded(vertex, index, vertices, faces, project) ||
+      isDuplicateVisibleVertex(vertex, index, visibleEntries, project)
+    ) {
+      return;
+    }
+
+    visibleEntries.push({ vertex, index });
+  });
+
+  return visibleEntries;
+}
+
+function formatVertices(vertexEntries) {
+  const output = vertexEntries
+    .map(({ vertex, index }) => {
       const [x, y, z] = vertex.map((value) => {
         const displayValue = Math.abs(value) < 0.000001 ? 0 : value;
         return displayValue.toFixed(2);
@@ -649,6 +807,14 @@ function formatVertices(vertices) {
       return `${String(index).padStart(2, "0")}: [${x}, ${y}, ${z}]`;
     })
     .join("\n");
+
+  return output || "No vertices in view.";
+}
+
+function currentVertexOutputEntries(vertices, faces) {
+  return showHiddenVerticesInput.checked
+    ? vertexEntries(vertices)
+    : visibleVertexEntries(vertices, faces);
 }
 
 function updateOrbitFromPointer(event) {
@@ -706,7 +872,7 @@ function render() {
   }
 
   drawVertices(renderVertices, renderFaces, renderFaceColors);
-  verticesOutput.textContent = formatVertices(renderVertices);
+  verticesOutput.textContent = formatVertices(currentVertexOutputEntries(renderVertices, renderFaces));
   rotationLabel.textContent = `${activeVersion.title} | ${rotation} degrees | ${axisSelect.selectedOptions[0].textContent}`;
 }
 
@@ -762,7 +928,7 @@ function selectVersion(versionKey) {
   activeVersion = versions[versionKey];
   const wasAxisDisabled = axisSelect.disabled;
 
-  if ((versionKey === "0.4.0" || versionKey === "0.3.2") && loadedWasmExports) {
+  if ((versionKey === "0.4.1" || versionKey === "0.3.2") && loadedWasmExports) {
     wasmExports = loadedWasmExports;
   } else {
     wasmExports = createFallbackRuntime(null, activeVersion);
@@ -816,6 +982,10 @@ versionSelect.addEventListener("change", () => {
 });
 
 axisSelect.addEventListener("change", () => {
+  render();
+});
+
+showHiddenVerticesInput.addEventListener("change", () => {
   render();
 });
 

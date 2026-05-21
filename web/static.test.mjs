@@ -9,6 +9,7 @@ test("index.html has the controls and output hooks used by main.js", async () =>
     "version-select",
     "angle-select",
     "axis-select",
+    "show-hidden-vertices",
     "rotate-button",
     "reset-button",
     "canvas",
@@ -19,6 +20,8 @@ test("index.html has the controls and output hooks used by main.js", async () =>
   ]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
+
+  assert.match(html, /id="show-hidden-vertices" type="checkbox" checked/);
 });
 
 test("index.html presents the demo as a portfolio case study", async () => {
@@ -29,7 +32,8 @@ test("index.html presents the demo as a portfolio case study", async () => {
   assert.match(html, /class="site-nav"/);
   assert.match(html, /Project logic/);
   assert.match(html, /Version history/);
-  assert.match(html, /v0\.4\.0 Orbit cube/);
+  assert.match(html, /v0\.4\.1 Orbit cube/);
+  assert.match(html, /v0\.4\.0/);
   assert.match(html, /v0\.3\.2 Shaded cube/);
   assert.match(html, /v0\.3\.1/);
   assert.match(html, /v0\.3\.0/);
@@ -65,7 +69,7 @@ test("main.js delegates rotation to Rust instead of doing trig itself", async ()
   assert.doesNotMatch(js, /rotate_current_cube_xyz/);
   assert.match(js, /versionSelect/);
   assert.match(js, /versions/);
-  assert.match(js, /0\.4\.0/);
+  assert.match(js, /0\.4\.1/);
   assert.match(js, /0\.1\.0/);
 
   const rotateBody = js.match(/function rotateCurrentDemo\([^]*?\n}/)?.[0] ?? "";
@@ -100,7 +104,7 @@ test("main.js supports drag orbit controls for v4", async () => {
   assert.match(js, /canvas\.addEventListener\("pointerdown", startOrbitDrag\)/);
   assert.match(js, /set_current_cube_camera/);
   assert.match(js, /current_cube_camera_vertices_ptr/);
-  assert.match(js, /verticesOutput\.textContent = formatVertices\(renderVertices\)/);
+  assert.match(js, /verticesOutput\.textContent = formatVertices\(currentVertexOutputEntries\(renderVertices, renderFaces\)\)/);
   assert.match(js, /solidFaces: true/);
   assert.match(js, /current_cube_face_colors_ptr/);
   assert.match(js, /cube_face_color_count/);
@@ -110,4 +114,24 @@ test("main.js supports drag orbit controls for v4", async () => {
   assert.match(js, /nextOrbitCamera/);
   assert.match(js, /rotationDegreesForView/);
   assert.doesNotMatch(js, /function orbitTransform/);
+});
+
+test("main.js culls off-canvas geometry before drawing", async () => {
+  const js = await readFile(new URL("./main.js", import.meta.url), "utf8");
+
+  assert.match(js, /function isPointInCanvas/);
+  assert.match(js, /function currentVertexOutputEntries/);
+  assert.match(js, /showHiddenVerticesInput\.checked/);
+  assert.match(js, /showHiddenVerticesInput\.addEventListener\("change", \(\) =>/);
+  assert.match(js, /function visibleVertexEntries/);
+  assert.match(js, /function isVertexOccluded/);
+  assert.match(js, /function isDuplicateVisibleVertex/);
+  assert.match(js, /function isDepthInFront/);
+  assert.match(js, /function faceContainsProjectedPoint/);
+  assert.match(js, /function projectedVerticesIntersectCanvas/);
+  assert.match(js, /\.filter\(\(\{ face \}\) => projectedVerticesIntersectCanvas\(face, project, 2\)\)/);
+  assert.match(js, /isVertexOccluded\(vertex, index, vertices, faces, project\)/);
+  assert.match(js, /isDuplicateVisibleVertex\(vertex, index, visibleEntries, project\)/);
+  assert.match(js, /if \(!projectedVerticesIntersectCanvas\(\[vertices\[index\], vertices\[index \+ 1\]\], project, 8\)\)/);
+  assert.match(js, /if \(!isPointInCanvas\(\[x, y\], 8\)\)/);
 });
